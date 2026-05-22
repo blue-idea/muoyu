@@ -29,12 +29,12 @@
   - [X]  验收证据：终端输出截图或 CI 日志
 
   - _需求：REQ-018。验收标准：REQ-018-AC-004（工程基线，为后续 API 错误与限流铺路）。_
-- [ ]  **TASK-000b. GitHub Actions CI/CD 与安全审计**（完成于 2026-05-20，PR #2 合并）
+- [X]  **TASK-000b. GitHub Actions CI/CD 与安全审计**（完成于 2026-05-20，PR #2 合并）
 
-  - [ ]  **质量流水线** `.github/workflows/ci.yml`
-  - [ ]  **安全审计流水线** `.github/workflows/security-audit.yml`
-  - [ ]  **ESLint 安全规则**（`eslint-plugin-security`、`eslint-plugin-no-secrets`）
-  - [ ]  **仓库与密钥**（`.gitignore` 已忽略 `.env*`，`!.env.example`）
+  - [X]  **质量流水线** `.github/workflows/ci.yml`
+  - [X]  **安全审计流水线** `.github/workflows/security-audit.yml`
+  - [X]  **ESLint 安全规则**（`eslint-plugin-security`、`eslint-plugin-no-secrets`）
+  - [X]  **仓库与密钥**（`.gitignore` 已忽略 `.env*`，`!.env.example`）
 
   - _需求：REQ-018；AGENTS.md 质量基线（Git Hooks + GitHub Actions 代码审计）。验收标准：REQ-018-AC-004；DoD：tsc/eslint/build/测试可 CI 复现。_
 - [ ]  **TASK-001. 集中配置与环境变量**（完成于 2026-05-20，PR #3 合并）
@@ -44,7 +44,7 @@
   - [ ]  实现 `config/paths.ts`（`00-人物档案.md` 等常量）
   - [ ]  实现 `config/storage.ts`（`STORAGE_DRIVER`、`getStorageDriver()`）
   - [ ]  提供 `.env.example`（`DATABASE_URL`、`AUTH_*`、`WORKSPACE_ROOT`、`RATE_LIMIT_*` 等，无真实密钥）
-  - [X]  验证：`rg "process\.env" config/ lib/` 无硬编码密钥；`pnpm typecheck` 通过
+  - [ ]  验证：`rg "process\.env" config/ lib/` 无硬编码密钥；`pnpm typecheck` 通过
 
   - _需求：REQ-007、REQ-018、REQ-014（预留）。验收标准：REQ-018-AC-004。_
 
@@ -63,7 +63,7 @@
   - [ ]  验收证据：`drizzle-kit` 迁移成功日志 + `\dt` 或 `SELECT tablename FROM pg_tables WHERE schemaname = 'public';` 结果
 
   - _需求：REQ-002、REQ-007、REQ-017、REQ-008、REQ-010。验收标准：REQ-002-AC-003、REQ-007-AC-001、REQ-017-AC-001~004。_
-- [X]  **TASK-003. StorageDriver（local 一期）**
+- [ ]  **TASK-003. StorageDriver（local 一期）**
 
   - [ ]  实现 `lib/storage/types.ts`（`StorageDriver` 接口）
   - [ ]  实现 `lib/storage/local-storage-driver.ts`（键 = `{storage_prefix}{relativePath}`）
@@ -73,7 +73,7 @@
   - [ ]  验证：`pnpm vitest run tests/unit/storage`；`rg "class LocalStorageDriver" lib/storage/`
 
   - _需求：REQ-007。验收标准：REQ-007-AC-001、REQ-007-AC-002、REQ-007-AC-003。_
-- [X]  **TASK-004. 领域基础：归属校验与状态机**
+- [ ]  **TASK-004. 领域基础：归属校验与状态机**
 
   - [ ]  实现 `lib/db/index.ts`（Drizzle client）
   - [ ]  实现 `lib/novel/require-user.ts`、`get-project-for-user.ts`（跨用户返回 null → 404）
@@ -143,7 +143,7 @@
   - [ ]  验证：E2E 完成 L1→L3 后 DB 有 `creation_config`；`pnpm vitest run tests/unit/wizard`
 
   - _需求：REQ-004、REQ-005、REQ-006。验收标准：REQ-004-AC-001~004、REQ-005-AC-001~003、REQ-006-AC-001~003。_
-- [X]  **TASK-010. Phase 0 快捷开写**
+- [ ]  **TASK-010. Phase 0 快捷开写**
 
   - [ ]  首页 L0：新建、续写、快捷输入（已登录）
   - [ ]  实现 `quickStart.extract`、`quickStart.choosePath` Actions
@@ -157,7 +157,7 @@
 
 ## 阶段 5：Phase 2 规划（异步）
 
-- [X]  **TASK-011. 规划任务入队与 Worker**
+- [ ]  **TASK-011. 规划任务入队与 Worker**
 
   - [ ]  实现 `lib/novel/planning-service.ts`：入队 `planning_jobs`，`projects.status → planning`
   - [ ]  实现 `planning.startPlanning` Action（返回 `planningJobId`）
@@ -174,7 +174,7 @@
   - [ ]  验证：`pnpm vitest run tests/integration/planning-job-api`；未登录 401；他人 project 404
 
   - _需求：REQ-008、REQ-002。验收标准：REQ-008-AC-004、REQ-002-AC-005。_
-- [X]  **TASK-013. L4 规划确认与模式选择**
+- [ ]  **TASK-013. L4 规划确认与模式选择**
 
   - [ ]  实现 `app/.../plan` 规划预览（前 5 章摘要 + 折叠全文）
   - [ ]  实现 `planning.confirmPlan`：`writingMode: serial`、`creationPace: auto|manual`；`planning → writing`
@@ -197,7 +197,7 @@
   - [ ]  验证：`pnpm vitest run tests/unit/chapter-writer`；`rg "wordCountPass" lib/`
 
   - _需求：REQ-010、REQ-007。验收标准：REQ-010-AC-001~006、REQ-007-AC-001~003。_
-- [X]  **TASK-015. 自动创作 Worker 与进度 API**
+- [ ]  **TASK-015. 自动创作 Worker 与进度 API**
 
   - [ ]  Worker 循环：`creationPace=auto` 项目消费 `generation_jobs`，串行逐章
   - [ ]  章间互斥：`locked_at` / 项目级锁；断点续写 `current_chapter_number`
