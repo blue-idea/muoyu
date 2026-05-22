@@ -4,8 +4,8 @@
 
 | 项 | 内容 |
 |----|------|
-| 版本 | **1.0.0** |
-| 状态 | **已定稿**（2026-05-20，澄清 D1~D5 全部确认） |
+| 版本 | **1.0.1** |
+| 状态 | **已定稿**（2026-05-22，已切换数据库方案为 PostgreSQL） |
 | 上游 | [requirements.md](./requirements.md) v1.0.0（已定稿）、[project.md](../project.md) v2.5 |
 | 下游 | [data.md](./data.md)（数据库设计）、[api.md](./api.md)（接口设计）、[tasks.md](./tasks.md) |
 | 当前代码基线 | Next.js 16 App Router 脚手架（`app/page.tsx`），业务模块待实现 |
@@ -46,7 +46,7 @@
 | 语言 | **TypeScript** | 5.x | 项目规范；严格模式 |
 | UI | **React** + **shadcn/ui** + **Tailwind CSS** | 稳定版 | 组件一致、可访问性、与现有 Tailwind 4 对齐 |
 | 认证 | **NextAuth.js**（Auth.js v5） | 稳定版 | 会话、回调、与 App Router 集成 |
-| 数据库 | **MySQL** | 8.x 稳定版 | 关系型元数据、事务、部署成熟 |
+| 数据库 | **PostgreSQL** | 16.x 稳定版 | 关系型元数据、事务、生态成熟 |
 | ORM | **Drizzle ORM** | 稳定版 | 类型安全 schema、迁移、轻量 |
 | 国际化 | **next-intl** | 稳定版 | App Router 路由级 i18n |
 | 客户端状态 | **Zustand** | 稳定版 | 向导多步、创作进度页局部 UI 状态 |
@@ -61,7 +61,7 @@
 
 | 技术 | 说明 |
 |------|------|
-| Supabase | AGENTS.md 安全示例中的 RLS 思路在 **MySQL + 应用层归属校验** 中实现，不引入 Supabase |
+| Supabase | AGENTS.md 安全示例中的 RLS 思路在 **PostgreSQL + 应用层归属校验（可选原生 RLS）** 中实现，不引入 Supabase |
 | 正文字段入库 | 违反 REQ-007，禁止 |
 
 ### 2.3 核心依赖关系
@@ -94,13 +94,13 @@ flowchart TB
     end
 
     subgraph data [持久化]
-        MySQL[(MySQL\nDrizzle)]
+        PostgreSQL[(PostgreSQL\nDrizzle)]
         FS[(作品目录 MD/JSON)]
     end
 
     client --> next
     API --> services
-    DOM --> MySQL
+    DOM --> PostgreSQL
     WS --> FS
 ```
 
@@ -126,13 +126,13 @@ flowchart LR
     User[用户浏览器]
     Next[Next.js 进程\nWeb + API]
     Worker[Worker 进程\nnpm run worker]
-    MySQL[(MySQL)]
+    PostgreSQL[(PostgreSQL)]
     Store[(StorageDriver\nlocal / 预留 R2)]
 
     User --> Next
-    Next --> MySQL
+    Next --> PostgreSQL
     Next --> Store
-    Worker --> MySQL
+    Worker --> PostgreSQL
     Worker --> Store
     Next -.触发.-> Worker
 ```
@@ -140,7 +140,7 @@ flowchart LR
 | 组件 | 一期 MVP | 说明 |
 |------|----------|------|
 | Next.js Web | 必须 | 页面 + API |
-| MySQL | 必须 | 用户、项目元数据、任务、偏好 |
+| PostgreSQL | 必须 | 用户、项目元数据、任务、偏好 |
 | 作品存储 | 必须 | `StorageDriver` 一期 **local**（`WORKSPACE_ROOT`）；接口预留 **Cloudflare R2**（S3 兼容） |
 | 独立 Worker | **必须（澄清 D1=A）** | `npm run worker` 独立进程；消费 `generation_jobs`；`creationPace: auto` 时后台逐章，避免 Serverless 超时 |
 | Redis | 可选 P2 | 分布式限流、任务锁；一期可用 DB 任务表 + 单 Worker |
@@ -149,8 +149,8 @@ flowchart LR
 
 | 需求 | 领域模块 | 主要技术落点 |
 |------|----------|--------------|
-| REQ-001 偏好 | `PreferenceService` | MySQL `user_preferences`；见 data.md |
-| REQ-002 工作台 | `ProjectService` | MySQL `projects` + 状态枚举 |
+| REQ-001 偏好 | `PreferenceService` | PostgreSQL `user_preferences`；见 data.md |
+| REQ-002 工作台 | `ProjectService` | PostgreSQL `projects` + 状态枚举 |
 | REQ-003 L0 快捷开写 | `QuickStartService` + 向导 Store | Zustand + `ExtractService`(AI) |
 | REQ-007 文件真源 | `WorkspaceService` | FS 读写；`content_files` 索引 |
 | REQ-008~009 规划 | `PlanningService` | AI + 写 `00/01/02` 文件 |
@@ -225,7 +225,7 @@ moyu/
 
 ```mermaid
 flowchart LR
-    subgraph mysql [MySQL 元数据]
+    subgraph postgresql [PostgreSQL 元数据]
         P[projects]
         CF[content_files]
         WP[writing_plan 快照可选]
@@ -241,7 +241,7 @@ flowchart LR
     P -->|storageKey / workspacePath| store
     CF -->|relativePath| store
     DOM[领域服务] -->|先写对象| store
-    DOM -->|后更新索引| mysql
+    DOM -->|后更新索引| postgresql
 ```
 
 **存储抽象（澄清 D3=B，预留 R2）：**
@@ -321,7 +321,7 @@ flowchart TD
 
 ### 5.4 后台任务（自动创作）
 
-**部署（澄清 D1=A）：** Web 进程只负责入队与查询进度；**独立 Worker 进程**（`scripts/worker.ts`，`package.json` 脚本 `worker`）循环消费任务，与 Next.js 同连 MySQL，经 `getStorageDriver()` 读写作品存储。
+**部署（澄清 D1=A）：** Web 进程只负责入队与查询进度；**独立 Worker 进程**（`scripts/worker.ts`，`package.json` 脚本 `worker`）循环消费任务，与 Next.js 同连 PostgreSQL，经 `getStorageDriver()` 读写作品存储。
 
 | 项 | 设计 |
 |----|------|
@@ -373,9 +373,9 @@ flowchart LR
 | 登录回跳 | `callbackUrl` 保留原目标（REQ 登录拦截点） |
 | 环境变量 | `AUTH_SECRET`、`AUTH_GITHUB_ID/SECRET`、`AUTH_GOOGLE_ID/SECRET`（禁止硬编码，见 AGENTS.md） |
 
-### 6.2 资源归属（等效 RLS）
+### 6.2 资源归属（应用层优先，兼容 RLS）
 
-MySQL 无原生 RLS，在 **Repository/Service 层强制**：
+一期默认采用 **Repository/Service 层强制归属校验**（即使 PostgreSQL 支持原生 RLS 也先不依赖数据库策略）：
 
 ```text
 ∀ 查询/更新 projects, content_files, knowledge_documents, ...
@@ -459,7 +459,7 @@ flowchart TB
 
 | 变量 | 用途 |
 |------|------|
-| `DATABASE_URL` | MySQL 连接 |
+| `DATABASE_URL` | PostgreSQL 连接 |
 | `AUTH_SECRET` | NextAuth |
 | `STORAGE_DRIVER` | `local`（一期默认）或 `r2` |
 | `WORKSPACE_ROOT` | local 驱动作品根目录 |
@@ -573,7 +573,7 @@ gantt
 
 | 阶段 | 架构增量 |
 |------|----------|
-| 一期 | MySQL 核心表、FS、NextAuth、单 Worker、串行+自动/手动、Vitest 核心单测、Playwright 主路径 |
+| 一期 | PostgreSQL 核心表、FS、NextAuth、单 Worker、串行+自动/手动、Vitest 核心单测、Playwright 主路径 |
 | 二期 | 校验 Job、偏好同步、断点续写强化 |
 | 三期 | 编辑器、导出管道、用户 LLM 配置 |
 | 四期 | 知识库 RAG、章节重生、并行 Worker |
@@ -604,7 +604,8 @@ gantt
 | 0.1.3 | 2026-05-20 | 澄清 D3：StorageDriver + local 默认，预留 R2 |
 | 0.1.4 | 2026-05-20 | 澄清 D4：RSC 读 + Server Actions 写 + Job REST 轮询 |
 | 1.0.0 | 2026-05-20 | 澄清 D5；设计定稿，进入 data.md / api.md |
+| 1.0.1 | 2026-05-22 | 数据库方案由 MySQL 调整为 PostgreSQL（含 RLS 策略说明与部署描述同步） |
 
 ---
 
-*下游文档：[data.md](./data.md)、[api.md](./api.md) 均已 v1.0.0 定稿。*
+*下游文档：[data.md](./data.md)、[api.md](./api.md) 按 PostgreSQL 方案对齐。*

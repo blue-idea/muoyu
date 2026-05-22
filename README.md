@@ -1,36 +1,97 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 摸鱼小说 (Moyu Novel)
 
-## Getting Started
+[![Next.js](https://img.shields.io/badge/Next.js-16.x-black?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![Drizzle](https://img.shields.io/badge/Drizzle-ORM-orange?style=flat-square)](https://orm.drizzle.team/)
+[![MySQL](https://img.shields.io/badge/MySQL-8.x-blue?style=flat-square&logo=mysql)](https://www.mysql.com/)
 
-First, run the development server:
+**摸鱼小说** 是一款面向中文网文创作场景的 AI 小说生成系统。通过渐进式问答收集创作意图，自动生成大纲与人物设定，并支持全自动或手动逐章写作、质量校验与内容交付。
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## 🌟 核心价值
+
+- **渐进式披露 (L0–L5)**：从简单的想法到深度的设定，分步引导创作，降低决策负担。
+- **文件真源架构**：人物档案、大纲、章节正文以 Markdown 文件持久化存储，数据库仅保存元数据索引，确保内容易于迁移与导出。
+- **全自动/手动创作**：支持后台全自动连续写作，也支持手动逐章触发、预览。
+- **偏好记忆与学习**：系统自动学习用户的创作风格与题材偏好，越写越懂你。
+- **外接知识库 (RAG)**：支持上传文档或抓取网址作为参考资料，生成内容严格遵循设定约束。
+- **自定义 AI 模型**：支持配置自有 OpenAI 兼容接口（如 GPT-4, DeepSeek 等）驱动创作。
+- **多格式导出**：一键生成 MD、TXT、PDF、EPUB 等多种格式成品。
+
+## 🛠️ 技术栈
+
+- **前端框架**：Next.js 16 (App Router)
+- **开发语言**：TypeScript
+- **UI 组件库**：React + shadcn/ui + Tailwind CSS
+- **身份认证**：NextAuth.js (Auth.js v5)
+- **数据库**：MySQL + Drizzle ORM
+- **持久化存储**：本地文件系统 (Local FS) / 预留 Cloudflare R2
+- **异步任务**：独立进程 Worker 消费任务队列
+- **国际化**：next-intl (中文 UI，英文错误信息)
+
+## 📂 项目结构
+
+```text
+moyu/
+├── app/                     # Next.js App Router (页面、布局、API)
+├── components/              # React 组件 (UI 与 业务组件)
+├── config/                  # 全局配置 (字数、路径、存储驱动等)
+├── docs/                    # 项目规范与技术文档 (PRD, 设计, API, Data)
+├── lib/                     # 领域层与基础设施 (novel 业务逻辑, db, ai, storage)
+├── scripts/                 # 脚本 (包含后台创作 Worker)
+├── stores/                  # Zustand 状态管理
+├── tpl/                     # 写作模板与流程规范 (核心业务资产)
+└── tests/                   # 单元测试与 E2E 测试
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🚀 快速上手
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 1. 环境准备
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Node.js (>= 20)
+- MySQL (8.x)
+- pnpm
 
-## Learn More
+### 2. 安装依赖
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+pnpm install
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 3. 配置环境变量
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+复制 `.env.example` 并重命名为 `.env.local`，填写必要的配置信息：
 
-## Deploy on Vercel
+- `DATABASE_URL`: MySQL 连接地址
+- `AUTH_SECRET`: NextAuth 密钥
+- `WORKSPACE_ROOT`: 小说内容文件存储根目录
+- `PLATFORM_LLM_*`: 平台默认 AI 模型配置
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 4. 数据库迁移
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+pnpm drizzle-kit push
+```
+
+### 5. 启动开发服务器
+
+```bash
+# 启动 Web 应用
+pnpm dev
+
+# 启动后台创作 Worker (如需自动写作功能)
+pnpm worker
+```
+
+打开 [http://localhost:3000](http://localhost:3000) 即可开始创作。
+
+## 📝 文档索引
+
+- [产品需求文档 (PRD)](./docs/project.md)
+- [功能需求详表](./docs/spec/requirements.md)
+- [技术设计文档](./docs/spec/design.md)
+- [数据库设计](./docs/spec/data.md)
+- [API 接口设计](./docs/spec/api.md)
+
+## 📄 许可
+
+本项目遵循 [LICENSE](LICENSE) 协议。

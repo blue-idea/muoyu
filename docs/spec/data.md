@@ -4,15 +4,15 @@
 
 | 项 | 内容 |
 |----|------|
-| 版本 | **1.0.0** |
+| 版本 | **1.0.1** |
 | 状态 | **已定稿** |
-| 定稿日期 | 2026-05-20 |
-| 上游 | [requirements.md](./requirements.md) v1.0.0、[design.md](./design.md) v1.0.0 |
+| 定稿日期 | 2026-05-22 |
+| 上游 | [requirements.md](./requirements.md) v1.0.0、[design.md](./design.md) v1.0.1 |
 | 下游 | [api.md](./api.md)（接口契约）、`drizzle/schema/*`（实现） |
-| ORM | Drizzle ORM + MySQL 8.x |
+| ORM | Drizzle ORM + PostgreSQL 16.x |
 | 迁移目录 | `drizzle/migrations/` |
 
-**范围说明：** 本文定义 MySQL 表结构、枚举、索引、ER 关系、`02-写作计划.json` 逻辑结构及与 DB 的同步策略。**不**将章节正文、人物档案、大纲全文存入数据库（REQ-007）。
+**范围说明：** 本文定义 PostgreSQL 表结构、枚举、索引、ER 关系、`02-写作计划.json` 逻辑结构及与 DB 的同步策略。**不**将章节正文、人物档案、大纲全文存入数据库（REQ-007）。
 
 ---
 
@@ -22,10 +22,10 @@
 |------|------|
 | 文件真源 | 人物/大纲/章节正文存 `StorageDriver`（一期 local，预留 R2）；DB 仅存路径与元数据 |
 | 用户隔离 | 所有业务表含 `user_id`；查询必须带 `session.user.id`（等效 RLS，见 design.md §6.2） |
-| 无正文 BLOB | 禁止 `LONGTEXT` 存章节；知识库解析结果存对象存储或独立文本文件路径 |
+| 无正文 BLOB | 禁止正文 `TEXT` 列存章节；知识库解析结果存对象存储或独立文本文件路径 |
 | 枚举集中 | 字符串枚举在 `drizzle/schema/enums.ts` 与本文保持一致 |
-| 时间戳 | 统一 `created_at`、`updated_at`（UTC，`datetime(3)`）；软删可选 `deleted_at` |
-| ID | 业务主键 `CHAR(36)` UUID v7/v4；Auth 表可与 NextAuth 约定一致 |
+| 时间戳 | 统一 `created_at`、`updated_at`（UTC，`TIMESTAMPTZ`）；软删可选 `deleted_at` |
+| ID | 业务主键 `UUID`（建议 UUID v7/v4）；Auth 表可与 NextAuth 约定一致 |
 
 ---
 
@@ -49,29 +49,29 @@ erDiagram
     knowledge_documents ||--o{ project_knowledge_bindings : referenced
 
     users {
-        char id PK
+        uuid id PK
         varchar email UK
         varchar name
         varchar password_hash
-        datetime created_at
+        timestamptz created_at
     }
 
     projects {
-        char id PK
-        char user_id FK
+        uuid id PK
+        uuid user_id FK
         varchar title
         varchar slug
         enum status
         varchar storage_prefix
         json creation_config
         boolean planning_ready
-        char llm_config_id FK
-        datetime created_at
+        uuid llm_config_id FK
+        timestamptz created_at
     }
 
     content_files {
-        char id PK
-        char project_id FK
+        uuid id PK
+        uuid project_id FK
         enum file_type
         varchar relative_path UK
         int chapter_number
@@ -79,12 +79,12 @@ erDiagram
     }
 
     generation_jobs {
-        char id PK
-        char project_id FK
-        char user_id FK
+        uuid id PK
+        uuid project_id FK
+        uuid user_id FK
         enum status
         int current_chapter_number
-        datetime locked_at
+        timestamptz locked_at
     }
 ```
 
@@ -183,14 +183,14 @@ erDiagram
 
 | 列名 | 类型 | 约束 | 说明 |
 |------|------|------|------|
-| `id` | `CHAR(36)` | PK | 用户 ID |
+| `id` | `UUID` | PK | 用户 ID |
 | `email` | `VARCHAR(255)` | NOT NULL, UNIQUE | 登录邮箱 |
-| `email_verified` | `DATETIME(3)` | NULL | 验证时间 |
+| `email_verified` | `TIMESTAMPTZ` | NULL | 验证时间 |
 | `name` | `VARCHAR(120)` | NULL | 显示名 |
 | `image` | `VARCHAR(512)` | NULL | 头像 URL |
 | `password_hash` | `VARCHAR(255)` | NULL | bcrypt；仅 Credentials |
-| `created_at` | `DATETIME(3)` | NOT NULL | |
-| `updated_at` | `DATETIME(3)` | NOT NULL | |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL | |
+| `updated_at` | `TIMESTAMPTZ` | NOT NULL | |
 
 **索引：** `UNIQUE(email)`
 
@@ -208,9 +208,9 @@ erDiagram
 
 | 列名 | 类型 | 约束 | 说明 |
 |------|------|------|------|
-| `user_id` | `CHAR(36)` | PK, FK → users | |
+| `user_id` | `UUID` | PK, FK → users | |
 | `preferences` | `JSON` | NOT NULL | 见 §8.1 |
-| `updated_at` | `DATETIME(3)` | NOT NULL | |
+| `updated_at` | `TIMESTAMPTZ` | NOT NULL | |
 
 **`preferences` 结构（对齐 `tpl/user-preferences.example.json`）：**
 
@@ -233,21 +233,21 @@ erDiagram
 
 | 列名 | 类型 | 约束 | 说明 |
 |------|------|------|------|
-| `id` | `CHAR(36)` | PK | 作品 ID |
-| `user_id` | `CHAR(36)` | NOT NULL, FK → users | 归属 |
+| `id` | `UUID` | PK | 作品 ID |
+| `user_id` | `UUID` | NOT NULL, FK → users | 归属 |
 | `title` | `VARCHAR(200)` | NOT NULL | 小说标题（L3 `novelName`） |
 | `slug` | `VARCHAR(80)` | NOT NULL | URL/目录用；`[a-z0-9-]+` |
 | `status` | `ENUM(project_status)` | NOT NULL, DEFAULT `draft` | 五态 |
 | `storage_prefix` | `VARCHAR(512)` | NOT NULL | 存储键前缀：`{userId}/{projectId}-{slug}/` |
 | `creation_config` | `JSON` | NULL | 向导 L0–L3 采集（见 §8.2） |
 | `planning_ready` | `BOOLEAN` | NOT NULL, DEFAULT false | 规划产物已生成、待 L4（REQ-002-AC-005） |
-| `llm_config_id` | `CHAR(36)` | NULL, FK → user_llm_configs | 作品级模型覆盖（三期） |
+| `llm_config_id` | `UUID` | NULL, FK → user_llm_configs | 作品级模型覆盖（三期） |
 | `writing_plan_etag` | `VARCHAR(64)` | NULL | `02-写作计划.json` 内容哈希，可选缓存失效 |
-| `chapter_completed_count` | `INT UNSIGNED` | NOT NULL, DEFAULT 0 | 冗余统计，由同步任务更新 |
-| `total_chapters` | `INT UNSIGNED` | NULL | 来自写作计划 |
-| `created_at` | `DATETIME(3)` | NOT NULL | |
-| `updated_at` | `DATETIME(3)` | NOT NULL | |
-| `deleted_at` | `DATETIME(3)` | NULL | 软删（可选） |
+| `chapter_completed_count` | `INTEGER` | NOT NULL, DEFAULT 0 | 冗余统计，由同步任务更新 |
+| `total_chapters` | `INTEGER` | NULL | 来自写作计划 |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL | |
+| `updated_at` | `TIMESTAMPTZ` | NOT NULL | |
+| `deleted_at` | `TIMESTAMPTZ` | NULL | 软删（可选） |
 
 **索引：**
 
@@ -267,15 +267,15 @@ erDiagram
 
 | 列名 | 类型 | 约束 | 说明 |
 |------|------|------|------|
-| `id` | `CHAR(36)` | PK | |
-| `project_id` | `CHAR(36)` | NOT NULL, FK → projects | |
+| `id` | `UUID` | PK | |
+| `project_id` | `UUID` | NOT NULL, FK → projects | |
 | `file_type` | `ENUM(content_file_type)` | NOT NULL | |
 | `relative_path` | `VARCHAR(255)` | NOT NULL | 如 `第01章-星落.md` |
-| `chapter_number` | `INT UNSIGNED` | NULL | 仅 `chapter` 类型 |
+| `chapter_number` | `INTEGER` | NULL | 仅 `chapter` 类型 |
 | `title` | `VARCHAR(200)` | NULL | 章节标题缓存 |
-| `word_count` | `INT UNSIGNED` | NULL | 上次统计字数 |
-| `created_at` | `DATETIME(3)` | NOT NULL | |
-| `updated_at` | `DATETIME(3)` | NOT NULL | |
+| `word_count` | `INTEGER` | NULL | 上次统计字数 |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL | |
+| `updated_at` | `TIMESTAMPTZ` | NOT NULL | |
 
 **索引：**
 
@@ -301,19 +301,19 @@ erDiagram
 
 | 列名 | 类型 | 约束 | 说明 |
 |------|------|------|------|
-| `id` | `CHAR(36)` | PK | |
-| `project_id` | `CHAR(36)` | NOT NULL, FK → projects | |
-| `user_id` | `CHAR(36)` | NOT NULL, FK → users | 冗余，便于 Worker 校验归属 |
+| `id` | `UUID` | PK | |
+| `project_id` | `UUID` | NOT NULL, FK → projects | |
+| `user_id` | `UUID` | NOT NULL, FK → users | 冗余，便于 Worker 校验归属 |
 | `status` | `ENUM(job_status)` | NOT NULL, DEFAULT `pending` | |
-| `current_chapter_number` | `INT UNSIGNED` | NULL | 当前/下一章序号 |
-| `locked_at` | `DATETIME(3)` | NULL | Worker 互斥锁 |
+| `current_chapter_number` | `INTEGER` | NULL | 当前/下一章序号 |
+| `locked_at` | `TIMESTAMPTZ` | NULL | Worker 互斥锁 |
 | `locked_by` | `VARCHAR(64)` | NULL | Worker 实例 ID |
-| `attempt_count` | `INT UNSIGNED` | NOT NULL, DEFAULT 0 | Job 级重试 |
+| `attempt_count` | `INTEGER` | NOT NULL, DEFAULT 0 | Job 级重试 |
 | `last_error` | `VARCHAR(1024)` | NULL | 英文错误摘要 |
-| `started_at` | `DATETIME(3)` | NULL | |
-| `completed_at` | `DATETIME(3)` | NULL | |
-| `created_at` | `DATETIME(3)` | NOT NULL | |
-| `updated_at` | `DATETIME(3)` | NOT NULL | |
+| `started_at` | `TIMESTAMPTZ` | NULL | |
+| `completed_at` | `TIMESTAMPTZ` | NULL | |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL | |
+| `updated_at` | `TIMESTAMPTZ` | NOT NULL | |
 
 **索引：**
 
@@ -330,16 +330,16 @@ erDiagram
 
 | 列名 | 类型 | 约束 | 说明 |
 |------|------|------|------|
-| `id` | `CHAR(36)` | PK | |
-| `user_id` | `CHAR(36)` | NOT NULL, FK | |
+| `id` | `UUID` | PK | |
+| `user_id` | `UUID` | NOT NULL, FK | |
 | `name` | `VARCHAR(80)` | NOT NULL | 配置显示名 |
 | `base_url` | `VARCHAR(512)` | NOT NULL | OpenAI 兼容 base |
-| `encrypted_api_key` | `VARBINARY(512)` | NOT NULL | AES-GCM，密钥 `ENCRYPTION_KEY` |
+| `encrypted_api_key` | `BYTEA` | NOT NULL | AES-GCM，密钥 `ENCRYPTION_KEY` |
 | `model_name` | `VARCHAR(120)` | NOT NULL | |
 | `is_default` | `BOOLEAN` | NOT NULL, DEFAULT false | 每用户至多一个 true |
-| `last_tested_at` | `DATETIME(3)` | NULL | |
-| `created_at` | `DATETIME(3)` | NOT NULL | |
-| `updated_at` | `DATETIME(3)` | NOT NULL | |
+| `last_tested_at` | `TIMESTAMPTZ` | NULL | |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL | |
+| `updated_at` | `TIMESTAMPTZ` | NOT NULL | |
 
 **索引：** `idx_llm_user_default (user_id, is_default)`
 
@@ -351,22 +351,22 @@ erDiagram
 
 | 列名 | 类型 | 说明 |
 |------|------|------|
-| `id` | `CHAR(36)` PK | |
-| `user_id` | `CHAR(36)` FK | |
+| `id` | `UUID` PK | |
+| `user_id` | `UUID` FK | |
 | `title` | `VARCHAR(200)` | |
 | `source_type` | `ENUM('upload','url')` | |
 | `source_meta` | `JSON` | 文件名、URL 等 |
 | `status` | `ENUM(knowledge_doc_status)` | |
 | `text_storage_key` | `VARCHAR(512)` | 解析后全文存 StorageDriver |
 | `failure_reason` | `VARCHAR(512)` | 英文 |
-| `created_at` / `updated_at` | `DATETIME(3)` | |
+| `created_at` / `updated_at` | `TIMESTAMPTZ` | |
 
 #### `knowledge_chunks`
 
 | 列名 | 类型 | 说明 |
 |------|------|------|
-| `id` | `CHAR(36)` PK | |
-| `document_id` | `CHAR(36)` FK | |
+| `id` | `UUID` PK | |
+| `document_id` | `UUID` FK | |
 | `chunk_index` | `INT` | |
 | `content` | `TEXT` | 分块文本（短片段，非全书） |
 | `embedding` | `JSON` | 向量可选 P2 |
@@ -375,9 +375,9 @@ erDiagram
 
 | 列名 | 类型 | 说明 |
 |------|------|------|
-| `project_id` | `CHAR(36)` FK | |
-| `document_id` | `CHAR(36)` FK | |
-| `bound_at` | `DATETIME(3)` | |
+| `project_id` | `UUID` FK | |
+| `document_id` | `UUID` FK | |
+| `bound_at` | `TIMESTAMPTZ` | |
 
 **PK：** `(project_id, document_id)`
 
@@ -447,7 +447,7 @@ erDiagram
 sequenceDiagram
     participant SVC as 领域服务
     participant ST as StorageDriver
-    participant DB as MySQL
+    participant DB as PostgreSQL
 
     SVC->>ST: writeText(relativePath, content)
     ST-->>SVC: OK
@@ -554,7 +554,7 @@ drizzle/
 | 表名 | snake_case 复数 |
 | TS 导出 | `projects` 表 → `projects` 关系名 `project` |
 | JSON 列 | `json('creation_config').$type<CreationConfig>()` 用 Zod 校验边界 |
-| 时间 | `timestamp('created_at', { mode: 'date', fsp: 3 })` |
+| 时间 | `timestamp('created_at', { withTimezone: true, mode: 'date' })` |
 | 外键 | `onDelete: 'cascade'` 用于 `project_id` 子表 |
 
 ### 9.3 迁移策略
@@ -582,7 +582,9 @@ drizzle/
 | 版本 | 日期 | 说明 |
 |------|------|------|
 | 1.0.0 | 2026-05-20 | 初稿定稿；对齐 requirements v1.0.0、design v1.0.0 |
+| 1.0.1 | 2026-05-22 | 数据库方案切换至 PostgreSQL：类型体系、时间字段、文档示例与 Drizzle 约定同步更新 |
 
 ---
 
-*下游：[api.md](./api.md) v1.0.0 已定稿；实现见 `drizzle/schema` 迁移。*
+*下游：[api.md](./api.md) 与 PostgreSQL 方案一致；实现见 `drizzle/schema` 迁移。*
+

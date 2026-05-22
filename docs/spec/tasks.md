@@ -13,20 +13,20 @@
 | Q2   | `writingMode` kebab-case：`serial` / `subagent-parallel` / `agent-teams` |
 | Q3   | 一期含快捷开写 + Phase 4 + 阅读                                          |
 | Q4   | Phase 2 异步`planning_jobs` + Worker + 轮询 API                          |
-| Q5   | 偏好 MySQL 为主 + 双写`user-preferences.json`                            |
+| Q5   | 偏好 PostgreSQL 为主 + 双写`user-preferences.json`                       |
 | Q6   | 删作品：先软删 DB → 再删存储 →`storage_delete_pending` 补偿            |
 
 ---
 
 ## 阶段 0：工程与规范基线
 
-- [ ]  **TASK-000. 工程脚本与质量门禁**（完成于 2026-05-20，PR #1 合并）
+- [X]  **TASK-000. 工程脚本与质量门禁**（完成于 2026-05-20，PR #1 合并）
 
-  - [ ]  在 `package.json` 增加脚本：`worker`、`test`（vitest）、`test:e2e`（playwright）、`db:generate`、`db:migrate`、`typecheck`（`tsc --noEmit`）
-  - [ ]  配置 Vitest（`vitest.config.ts`）、Playwright（`playwright.config.ts`）
-  - [ ]  确认 Husky + lint-staged 对 `*.{ts,tsx}` 运行 eslint + tsc
-  - [ ]  验证：`pnpm typecheck` 零错误；`pnpm lint` 零 error
-  - [ ]  验收证据：终端输出截图或 CI 日志
+  - [X]  在 `package.json` 增加脚本：`worker`、`test`（vitest）、`test:e2e`（playwright）、`db:generate`、`db:migrate`、`typecheck`（`tsc --noEmit`）
+  - [X]  配置 Vitest（`vitest.config.ts`）、Playwright（`playwright.config.ts`）
+  - [X]  确认 Husky + lint-staged 对 `*.{ts,tsx}` 运行 eslint + tsc
+  - [X]  验证：`pnpm typecheck` 零错误；`pnpm lint` 零 error
+  - [X]  验收证据：终端输出截图或 CI 日志
 
   - _需求：REQ-018。验收标准：REQ-018-AC-004（工程基线，为后续 API 错误与限流铺路）。_
 - [ ]  **TASK-000b. GitHub Actions CI/CD 与安全审计**（完成于 2026-05-20，PR #2 合并）
@@ -59,8 +59,8 @@
   - [ ]  实现 `user_preferences`、`projects`（含 `storage_prefix`、`deleted_at`、`storage_delete_pending`、`planning_ready`）
   - [ ]  实现 `content_files`、`generation_jobs`、**`planning_jobs`**
   - [ ]  生成并执行迁移：`pnpm db:migrate`
-  - [ ]  验证：`rg "storage_prefix" drizzle/` 有列定义；`tree drizzle/schema` 含上述文件；MySQL 客户端表结构与 `data.md` §5 一致
-  - [ ]  验收证据：`drizzle-kit` 迁移成功日志 + `SHOW TABLES` 结果
+  - [ ]  验证：`rg "storage_prefix" drizzle/` 有列定义；`tree drizzle/schema` 含上述文件；PostgreSQL 客户端表结构与 `data.md` §5 一致
+  - [ ]  验收证据：`drizzle-kit` 迁移成功日志 + `\dt` 或 `SELECT tablename FROM pg_tables WHERE schemaname = 'public';` 结果
 
   - _需求：REQ-002、REQ-007、REQ-017、REQ-008、REQ-010。验收标准：REQ-002-AC-003、REQ-007-AC-001、REQ-017-AC-001~004。_
 - [X]  **TASK-003. StorageDriver（local 一期）**
@@ -233,7 +233,7 @@
   - [ ]  实现 `app/.../read`：章节目录 + 从 MD 加载正文（章首引子样式区分）
   - [ ]  RSC 读 `StorageDriver`；可选 `GET .../chapters/[n]/content` 仅用于客户端按需加载
   - [ ]  完成页：统计 + 阅读入口（导出入口三期）
-  - [ ]  验证：E2E 完稿作品可阅读全章；响应无 DB 正文列（`rg "LONGTEXT" drizzle/` 无章节正文）
+  - [ ]  验证：E2E 完稿作品可阅读全章；响应无 DB 正文列（通过 schema 审查确认无章节正文列）
 
   - _需求：REQ-012。验收标准：REQ-012-AC-001~002。_
 
