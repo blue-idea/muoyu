@@ -141,11 +141,11 @@
   - [x] `app/.../projects/[projectId]/planning`：规划生成中轮询 UI；失败重试；`planning_ready` 后跳转 L4（REQ-008-AC-007/008）
   - _需求：REQ-008、REQ-002_
 
-- [ ] **TASK-013. L4 规划确认与模式选择**
+- [x] **TASK-013. L4 规划确认与模式选择**（完成于 2026-05-24，PR #9）
 
-  - [ ] `app/.../plan` 规划预览页（前 5 章摘要 + 折叠全文 + 知识库勾选）
-  - [ ] `planning.confirmPlan`：`serial`/`parallel` + `auto`/`manual`
-  - [ ] `creationPace=auto` → 创建 `generation_jobs`
+  - [x] `app/.../plan` 规划预览页（前 5 章摘要 + 折叠全文 + 知识库勾选）
+  - [x] `planning.confirmPlan`：`serial`/`parallel` + `auto`/`manual`
+  - [x] `creationPace=auto` → 创建 `generation_jobs`
   - _需求：REQ-009、REQ-008、REQ-017、REQ-015_
 
 ---
