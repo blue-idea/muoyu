@@ -13,6 +13,7 @@ import { getDb } from "@/lib/db";
 import { getProjectForUser, type ProjectRecord } from "@/lib/db/get-project-for-user";
 import { projects } from "@/drizzle/schema/projects";
 import { createStorageDriver } from "@/lib/storage";
+import type { JsonObject } from "@/drizzle/schema/json";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -206,6 +207,24 @@ export class ProjectService {
       createdAt: project.createdAt,
       updatedAt: project.updatedAt,
     };
+  }
+  /**
+   * 更新项目创作配置（向导 L1/L2/L3 数据）
+   *
+   * EARS-2: 创建项目后将 creation_config 写入 DB
+   */
+  async updateCreationConfig(
+    userId: string,
+    projectId: string,
+    creationConfig: Record<string, unknown>,
+  ): Promise<void> {
+    const db = getDb();
+
+    await getProjectForUser(projectId, userId);
+    await db
+      .update(projects)
+      .set({ creationConfig: creationConfig as unknown as JsonObject, updatedAt: new Date() })
+      .where(and(eq(projects.id, projectId), eq(projects.userId, userId)));
   }
 }
 
