@@ -89,12 +89,12 @@
 
 ## 阶段 3：偏好与作品工作台
 
-- [ ] **TASK-007. 用户偏好（DB + 双写 JSON）**
+- [x] **TASK-007. 用户偏好（DB + 双写 JSON）**（完成于 2026-05-23，PR #3 已合并）
 
-  - [ ] `preference-service.ts`；L1/L2 静默合并
-  - [ ] 双写 `user-preferences.json`
-  - [ ] `preferences.update`、`preferences.reset` + 设置页
-  - [ ] `app/[locale]/(app)/settings` 统一导航：偏好 + AI 模型子页（REQ-001-AC-005）
+  - [x] `preference-service.ts`；L1/L2 静默合并
+  - [x] 双写 `user-preferences.json`
+  - [x] `preferences.update`、`preferences.reset` + 设置页
+  - [x] `app/[locale]/(app)/settings` 统一导航：偏好 + AI 模型子页（REQ-001-AC-005）
   - _需求：REQ-001_
 
 - [ ] **TASK-008. 作品 CRUD 与仪表盘**
