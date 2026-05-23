@@ -7,6 +7,12 @@
     "planningNotReady": "Planning is not ready yet. Please wait...",
     "planningJobFailed": "Planning job failed. Please try again.",
     "chapterOrderViolation": "Chapter order violation detected.",
-    "internalError": "Something went wrong. Please try again later."
+    "internalError": "Something went wrong. Please try again later.",
+    "preferences": {
+      "updateFailed": "Failed to update preferences. Please try again.",
+      "resetFailed": "Failed to reset preferences. Please try again.",
+      "loadFailed": "Failed to load preferences. Please try again.",
+      "notAuthenticated": "Please sign in to manage preferences."
+    }
   }
 }
