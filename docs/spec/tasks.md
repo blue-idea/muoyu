@@ -97,12 +97,12 @@
   - [x] `app/[locale]/(app)/settings` 统一导航：偏好 + AI 模型子页（REQ-001-AC-005）
   - _需求：REQ-001_
 
-- [ ] **TASK-008. 作品 CRUD 与仪表盘**
+- [x] **TASK-008. 作品 CRUD 与仪表盘**（完成于 2026-05-23，PR #4 已合并）
 
-  - [ ] `projects.createProject`、`projects.deleteProject`（Q6 软删流程）
-  - [ ] `getProjectsForDashboard()`：五态入口映射（`draft`→向导、`planning` 生成中/待确认、`writing`/`validating`→进度、`completed`→完成页）
-  - [ ] `getProjectDetail()`：元数据不含正文
-  - [ ] `app/[locale]/(app)/dashboard`：列表卡片按状态跳转正确路由
+  - [x] `projects.createProject`、`projects.deleteProject`（Q6 软删流程）
+  - [x] `getProjectsForDashboard()`：五态入口映射（`draft`→向导、`planning` 生成中/待确认、`writing`/`validating`→进度、`completed`→完成页）
+  - [x] `getProjectDetail()`：元数据不含正文
+  - [x] `app/[locale]/(app)/dashboard`：列表卡片按状态跳转正确路由
   - _需求：REQ-002、REQ-017_
 
 ---
