@@ -1,69 +1,65 @@
-# TASK-008 完成摘要
+# TASK-009 Phase 1 Wizard 实现完成
 
-## 实现内容
+## 任务摘要
 
-### 1. ProjectService (`lib/projects/project-service.ts`)
-- `createProject(userId, title, slug)`：创建项目，分配 `storage_prefix`，默认 draft 状态
-- `deleteProject(userId, projectId)`：Q6 软删流程（先软删 DB → 再删 R2 对象 → `storage_delete_pending` 补偿）
-- `getProjectsForDashboard(userId)`：返回用户所有项目，五态入口映射
-- `getProjectDetail(userId, projectId)`：元数据不含正文，越权访问通过 `getProjectForUser` 拒绝
+在 `/Volumes/data/NextCloud/coding/netx.js/feat-task-009` 目录下实现了 TASK-009 Phase 1 向导功能（L1/L2/L3），包括 Zustand store、Server Actions 和 UI 页面。
 
-### 2. 五态路由映射
-| 状态 | 路由 |
-|------|------|
-| draft | `/projects/[projectId]/wizard` |
-| planning | `/projects/[projectId]/planning` |
-| writing | `/projects/[projectId]/write` |
-| validating | `/projects/[projectId]/complete` |
-| completed | `/projects/[projectId]/read` |
+## 已创建文件
 
-### 3. Server Actions (`app/actions/projects.ts`)
-- `createProject(input)`：创建项目并返回跳转 URL
-- `deleteProject(projectId)`：软删处理
-- `getProjectsDashboard()`：获取仪表盘列表
-- `getProjectDetail(projectId)`：获取项目详情
-- `getWritingProgressInfo(projectId)`：获取创作进度信息
+### 1. lib/wizard/wizard-store.ts
+- Zustand store：管理 L1/L2/L3 向导数据
+- `saveLayer1(data)` / `saveLayer2(data)` / `saveLayer3(data)`：保存各层数据
+- `getWizardData()`：获取完整向导数据
+- `hydrateFromRemote(data)`：从远端数据预填（EARS-2）
+- `resetWizard()`：重置所有数据
 
-### 4. 仪表盘页面 (`app/[locale]/(app)/dashboard/page.tsx`)
-- 列表卡片按状态跳转正确路由
-- 新建作品按钮 → `/projects/new`
-- 进度条展示（writing/validating 状态）
-- 空状态引导
+### 2. app/actions/wizard.ts
+Server Actions：
+- `wizardSaveLayer1(data)`：保存 L1 + 静默更新偏好（EARS-1）
+- `wizardSaveLayer2(data)`：保存 L2 + 静默更新偏好（EARS-1）
+- `wizardSaveLayer3(data)`：保存 L3 + 创建项目 + 写入 creation_config（EARS-2）
+- `wizardGetData(projectId?)`：获取已保存数据 + 用户偏好（EARS-2）
+- `wizardUpdateCreationConfig(projectId, creationConfig)`：更新项目创作配置
 
----
+### 3. lib/projects/project-service.ts
+新增 `updateCreationConfig()` 方法：将 creation_config 写入 DB（EARS-2）
+
+### 4. UI 页面
+- `wizard/wizard-progress.tsx`：L1/L2/L3 进度指示器
+- `wizard/l1/page.tsx` + `wizard-l1-client.tsx`：L1 核心三问（Q1-Q3）
+- `wizard/l2/page.tsx` + `wizard-l2-client.tsx`：L2 深度定制（Q4-Q8，可跳过）
+- `wizard/l3/page.tsx` + `wizard-l3-client.tsx`：L3 标题生成与选择
 
 ## EARS 覆盖矩阵
 
-| EARS ID | 需求 | 实现位置 | 状态 |
-|---------|------|----------|------|
-| EARS-2 | REQ-002-AC-001 仅展示当前用户作品 | `project-service.ts` `getProjectsForDashboard()` 用 `eq(projects.userId, userId)` 过滤 | ✅ |
-| EARS-3 | REQ-002-AC-004 越权访问拒绝 | `getProjectForUser()` 查询 `userId` 匹配，跨用户返回 `null`，UI 显示 404 | ✅ |
-| EARS-4 | REQ-002-AC-007 draft 项目跳向导 | `dashboard-content.tsx` `getResumeHref()` 中 `draft` → `/wizard` | ✅ |
-| EARS-5 | REQ-002-AC-002 writing 续写入口 | `dashboard-content.tsx` writing 卡片展示进度条 + "Continue Writing" 按钮 | ✅ |
-| EARS-6 | REQ-002-AC-005 planning 确认规划入口 | `dashboard-content.tsx` planning+ready 显示 "Confirm Plan"，!ready 显示 "Generating..." | ✅ |
+| EARS ID | 需求 | 实现位置 |
+|---------|------|----------|
+| EARS-1 | L1/L2 提交时静默更新偏好存储 | wizardSaveLayer1, wizardSaveLayer2 + preference-service.updatePreferences |
+| EARS-2 | 打开向导时预填偏好字段 + 创建项目后写 creation_config | wizardGetData (预填) + wizardSaveLayer3 (写 DB) + updateCreationConfig |
+| EARS-3 | 重置偏好恢复默认值 | 由 preference-service.resetPreferences 提供，UI 可通过设置页调用 |
+| EARS-4 | 未登录访问创作功能 → 跳转登录页 | 上层 AppLayout 已拦截，所有 wizard 页面均在 (app) 路由组下 |
 
----
-
-## 工程质量检查
+## 工程质量检查结果
 
 | 检查项 | 结果 |
 |--------|------|
 | `pnpm typecheck` | ✅ 零错误 |
-| `pnpm lint` | ✅ 零错误（仅预存 warnings） |
+| `pnpm lint` | ✅ 零错误（仅 12 个预存 warning，与本次新增无关） |
 | `pnpm build` | ✅ 成功 |
-| 禁止 `as any` | ✅ 未使用 |
-| 用户可见文案英文 | ✅ |
-| 代码注释中文 | ✅ |
-| 越权访问返回 404 而非 403 | ✅ 符合 REQ-002-AC-004 |
 
----
+## 新增依赖
 
-## 生成文件
+- `zustand`：状态管理，已通过 `pnpm add zustand` 安装
 
-```
-lib/projects/project-service.ts        # ProjectService 类 + getProjectService()
-app/actions/projects.ts                # Server Actions
-app/[locale]/(app)/dashboard/page.tsx  # 仪表盘页面
-app/[locale]/(app)/dashboard/dashboard-content.tsx  # 卡片组件
-app/[locale]/(app)/dashboard/dashboard-skeleton.tsx # 加载骨架
-```
+## 向导路由
+
+- `/projects/[projectId]/wizard/l1` → L1 核心三问
+- `/projects/[projectId]/wizard/l2` → L2 深度定制
+- `/projects/[projectId]/wizard/l3` → L3 标题生成
+- L3 完成后跳转到 `/projects/[projectId]/planning`（L4 规划确认）
+
+## 后续工作提示
+
+- L4 规划确认页（`/projects/[projectId]/planning`）尚未实现，需要在 L3 完成后创建项目并触发 Phase 2 规划生成
+- 标题生成（`wizard-l3-client.tsx`）目前为客户端模拟生成，后续需接入 LLM 生成真实标题候选
+- L1/L2 随机生成按钮（REQ-004-AC-003）暂未实现，可后续接入 LLM
