@@ -71,10 +71,10 @@
 
 ## 阶段 2：认证与会话
 
-- [ ] **TASK-005. NextAuth（Credentials + GitHub + Google）**
+- [x] **TASK-005. NextAuth（Credentials + GitHub + Google）**（完成于 2026-05-23，PR #1 已合并）
 
-  - [ ] `lib/auth/auth.ts`、Drizzle Adapter、Database Session
-  - [ ] 注册/登录页、`app/api/auth/[...nextauth]/route.ts`
+  - [x] `lib/auth/auth.ts`、Drizzle Adapter、Database Session
+  - [x] 注册/登录页、`app/api/auth/[...nextauth]/route.ts`
   - _需求：REQ-001、REQ-018_
 
 - [ ] **TASK-006. 中间件：Auth + i18n + 限流**
