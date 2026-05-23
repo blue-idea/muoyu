@@ -41,14 +41,14 @@
 
 ## 阶段 1：数据层与存储
 
-- [ ] **TASK-002. Drizzle Schema 与迁移（全量表）**
+- [x] **TASK-002. Drizzle Schema 与迁移（全量表）**
 
-  - [ ] `drizzle/schema/enums.ts`（`project_status`、`content_file_type`、`job_status`、`creation_pace`、`writing_mode` 等）
-  - [ ] Auth 四表（Auth.js Drizzle Adapter）
-  - [ ] `user_preferences`、`projects`（含 `storage_prefix`、`deleted_at`、`storage_delete_pending`、`planning_ready`）
-  - [ ] `content_files`、`planning_jobs`、`generation_jobs`
-  - [ ] `user_llm_configs`、`knowledge_*`、`export_records`
-  - [ ] `pnpm db:migrate` 成功
+  - [x] `drizzle/schema/enums.ts`（`project_status`、`content_file_type`、`job_status`、`creation_pace`、`writing_mode` 等）
+  - [x] Auth 四表（Auth.js Drizzle Adapter）
+  - [x] `user_preferences`、`projects`（含 `storage_prefix`、`deleted_at`、`storage_delete_pending`、`planning_ready`）
+  - [x] `content_files`、`planning_jobs`、`generation_jobs`
+  - [x] `user_llm_configs`、`knowledge_*`、`export_records`
+  - [x] `pnpm db:migrate` 成功
   - _需求：REQ-002、REQ-007、REQ-017、REQ-008、REQ-010、REQ-014、REQ-015、REQ-012_
 
 - [ ] **TASK-003. R2StorageDriver（唯一对象存储）**
