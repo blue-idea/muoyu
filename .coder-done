@@ -1,46 +1,69 @@
-# TASK-006 完成报告
+# TASK-008 完成摘要
 
-## 完成摘要
+## 实现内容
 
-实现了中间件（Auth + i18n + 限流）：
+### 1. ProjectService (`lib/projects/project-service.ts`)
+- `createProject(userId, title, slug)`：创建项目，分配 `storage_prefix`，默认 draft 状态
+- `deleteProject(userId, projectId)`：Q6 软删流程（先软删 DB → 再删 R2 对象 → `storage_delete_pending` 补偿）
+- `getProjectsForDashboard(userId)`：返回用户所有项目，五态入口映射
+- `getProjectDetail(userId, projectId)`：元数据不含正文，越权访问通过 `getProjectForUser` 拒绝
 
-1. **middleware.ts** — 增强未登录跳转 + callbackUrl；API 限流 100次/IP/小时超限返回 429；未登录 API 返回 401
-2. **lib/rate-limit.ts** — 内存 Map 限流实现，getClientIp + checkRateLimit + rateLimitExceededResponse
-3. **next-intl 集成** — `app/[locale]/layout.tsx` 配置 i18n，默认 locale zh；`i18n/request.tsx` 始终加载 en.json 错误文案
-4. **messages/en.json** — `errors.*` 英文文案，`errors.rateLimited` 等
-5. **sonner Toaster** — 全局 Toast 组件，非阻塞展示限流/错误
-6. **next.config.ts** — 使用 `createNextIntlPlugin` 插件
+### 2. 五态路由映射
+| 状态 | 路由 |
+|------|------|
+| draft | `/projects/[projectId]/wizard` |
+| planning | `/projects/[projectId]/planning` |
+| writing | `/projects/[projectId]/write` |
+| validating | `/projects/[projectId]/complete` |
+| completed | `/projects/[projectId]/read` |
+
+### 3. Server Actions (`app/actions/projects.ts`)
+- `createProject(input)`：创建项目并返回跳转 URL
+- `deleteProject(projectId)`：软删处理
+- `getProjectsDashboard()`：获取仪表盘列表
+- `getProjectDetail(projectId)`：获取项目详情
+- `getWritingProgressInfo(projectId)`：获取创作进度信息
+
+### 4. 仪表盘页面 (`app/[locale]/(app)/dashboard/page.tsx`)
+- 列表卡片按状态跳转正确路由
+- 新建作品按钮 → `/projects/new`
+- 进度条展示（writing/validating 状态）
+- 空状态引导
+
+---
 
 ## EARS 覆盖矩阵
 
-| EARS ID | 描述 | 实现位置 |
-|---------|------|----------|
-| EARS-1 | middleware.ts 未登录跳转登录页 + callbackUrl | middleware.ts L53-58 |
-| EARS-2 | API 速率超限返回明确英文错误 | middleware.ts L35-38 + lib/rate-limit.ts L66-77 |
-| EARS-3 | 未登录 API 返回 401 | middleware.ts L40-47 |
-| EARS-4 | 限流拒绝时 Server Actions/页面展示非阻塞英文错误 Toast | `app/[locale]/layout.tsx` Toaster + `messages/en.json` errors.rateLimited |
+| EARS ID | 需求 | 实现位置 | 状态 |
+|---------|------|----------|------|
+| EARS-2 | REQ-002-AC-001 仅展示当前用户作品 | `project-service.ts` `getProjectsForDashboard()` 用 `eq(projects.userId, userId)` 过滤 | ✅ |
+| EARS-3 | REQ-002-AC-004 越权访问拒绝 | `getProjectForUser()` 查询 `userId` 匹配，跨用户返回 `null`，UI 显示 404 | ✅ |
+| EARS-4 | REQ-002-AC-007 draft 项目跳向导 | `dashboard-content.tsx` `getResumeHref()` 中 `draft` → `/wizard` | ✅ |
+| EARS-5 | REQ-002-AC-002 writing 续写入口 | `dashboard-content.tsx` writing 卡片展示进度条 + "Continue Writing" 按钮 | ✅ |
+| EARS-6 | REQ-002-AC-005 planning 确认规划入口 | `dashboard-content.tsx` planning+ready 显示 "Confirm Plan"，!ready 显示 "Generating..." | ✅ |
+
+---
 
 ## 工程质量检查
 
+| 检查项 | 结果 |
+|--------|------|
+| `pnpm typecheck` | ✅ 零错误 |
+| `pnpm lint` | ✅ 零错误（仅预存 warnings） |
+| `pnpm build` | ✅ 成功 |
+| 禁止 `as any` | ✅ 未使用 |
+| 用户可见文案英文 | ✅ |
+| 代码注释中文 | ✅ |
+| 越权访问返回 404 而非 403 | ✅ 符合 REQ-002-AC-004 |
+
+---
+
+## 生成文件
+
 ```
-pnpm typecheck  →  零错误 (tsc --noEmit 静默退出)
-pnpm build      →  成功 (Next.js 16.2.6 Turbopack, 编译+类型检查+静态页面均通过)
+lib/projects/project-service.ts        # ProjectService 类 + getProjectService()
+app/actions/projects.ts                # Server Actions
+app/[locale]/(app)/dashboard/page.tsx  # 仪表盘页面
+app/[locale]/(app)/dashboard/dashboard-content.tsx  # 卡片组件
+app/[locale]/(app)/dashboard/dashboard-skeleton.tsx # 加载骨架
 ```
-
-- 禁止 `as any` ✅
-- 代码注释中文 ✅
-- 用户可见文案英文 ✅
-- EARS 标注覆盖 4/4 ✅
-
-## 文件变更
-
-- `middleware.ts` — 重写，增强限流+auth
-- `lib/rate-limit.ts` — 新增，限流逻辑
-- `lib/i18n/index.ts` — 新增，i18n 配置
-- `lib/i18n/routing.ts` — 新增，路由配置
-- `i18n/request.tsx` — 新增，next-intl 请求配置
-- `next.config.ts` — 更新，使用 next-intl 插件
-- `app/[locale]/layout.tsx` — 新增，i18n locale 布局
-- `app/[locale]/page.tsx` — 迁移，首页
-- `app/layout.tsx` — 简化，根布局
-- `messages/en.json` — 新增，英文错误文案
