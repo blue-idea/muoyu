@@ -4,9 +4,9 @@
 
 | 项 | 内容 |
 |----|------|
-| 版本 | **1.3.0** |
-| 状态 | **已定稿**（2026-05-23，R2 唯一对象存储） |
-| 上游 | [requirements.md](./requirements.md) v1.3.0、[project.md](../project.md) v2.5 |
+| 版本 | **1.4.0** |
+| 状态 | **已定稿**（2026-05-23，UI/访问 P0 对齐 requirements v1.4.0） |
+| 上游 | [requirements.md](./requirements.md) v1.4.0、[project.md](../project.md) v2.5 |
 | 下游 | [data.md](./data.md)（数据库设计）、[api.md](./api.md)（接口设计）、[tasks.md](./tasks.md) |
 | 当前代码基线 | Next.js 16 App Router 脚手架（`app/page.tsx`），业务模块待实现 |
 
@@ -20,7 +20,7 @@
 
 | 目标 | 说明 |
 |------|------|
-| 对齐需求 | 覆盖 REQ-001 ~ REQ-018 全量及澄清 #1~#5 |
+| 对齐需求 | 覆盖 REQ-001 ~ REQ-018 全量及澄清 #1~#6 |
 | 文件真源 | 人物/大纲/章节正文以 **Cloudflare R2** 对象为权威副本（REQ-007） |
 | 可测试 | 领域逻辑与文件 IO、LLM 调用可单元测试；核心流程可 E2E |
 | 全量交付 | 不分期裁剪；并行写作、导出、知识库、章节重生等均在本版架构内实现 |
@@ -179,14 +179,16 @@ moyu/
 │   │   └── (app)/                   # 需登录
 │   │       ├── dashboard/           # 我的作品
 │   │       └── projects/[projectId]/
-│   │           ├── wizard/          # L1-L3
-│   │           ├── plan/            # L4
-│   │           ├── write/           # L5 创作进度
+│   │           ├── wizard/          # L1-L3；draft 恢复入口
+│   │           ├── planning/        # Phase 2 生成中（轮询 planning_jobs）
+│   │           ├── plan/            # L4 规划确认
+│   │           ├── write/           # L5 创作进度；validating 时展示 Phase 4 校验 UI
+│   │           ├── complete/        # 完稿统计 + 阅读/编辑/导出入口
 │   │           ├── read/            # 阅读器
 │   │           ├── edit/            # M8 编辑
 │   │           └── export/          # 成书导出
 │   │       ├── knowledge/           # 知识库管理
-│   │       └── settings/            # 偏好、AI 模型
+│   │       └── settings/            # 统一导航：偏好、AI 模型（REQ-001-AC-005）
 │   └── api/                         # Route Handlers → 契约见 api.md
 ├── components/
 │   ├── ui/                          # shadcn
@@ -461,9 +463,24 @@ flowchart TB
 
 | 模式 | 路径示例 | 说明 |
 |------|----------|------|
+| 访客营销 | `/zh` 或 `/zh/(marketing)` | 价值说明 + 登录/注册 CTA（REQ-003-AC-011） |
+| 已登录首页 | `/zh/dashboard` 或作品内 L0 | 新建 / 续写 / 快捷开写 |
 | 默认 | `/zh/dashboard` | 未带 locale 时重定向至 `/zh` |
-| 英文 UI | `/en/dashboard` | 可选第二语言界面 |
+| 英文 UI | `/en/dashboard` | 可选第二语言界面（P2 渐进） |
 | 配置 | `middleware` 合并 auth + intl | 避免重复重定向；`config/app.ts` 导出 `locales`、`defaultLocale` |
+
+**作品状态 → 默认跳转（仪表盘 / 首页卡片，REQ-002 v1.4.0）：**
+
+| `projects.status` | 条件 | 目标路由 | 列表文案示例 |
+|-------------------|------|----------|--------------|
+| `draft` | — | `/projects/{id}/wizard` | 继续向导 |
+| `planning` | `planning_ready=false` | `/projects/{id}/planning` | 规划生成中… |
+| `planning` | `planning_ready=true` | `/projects/{id}/plan` | 继续确认规划 |
+| `writing` | — | `/projects/{id}/write` | 续写 · 12/20 章 |
+| `validating` | — | `/projects/{id}/write`（校验模式） | 继续校验 · 8/20 章 |
+| `completed` | — | `/projects/{id}/complete` | 阅读 / 导出 |
+
+实现：`lib/novel/project-routes.ts`（或 `config/paths.ts` 旁）集中 `getResumeHref(project)`，供 RSC 与 E2E 共用。
 
 ### 7.2 状态划分
 
@@ -471,7 +488,10 @@ flowchart TB
 |----------|------|------|
 | 服务端数据 | **RSC**（读）、**Server Actions**（写） | 作品详情、章节列表、向导提交 |
 | 多步向导草稿 | **Zustand** `wizardStore` | L1-L3 步骤、提取结果（未提交前） |
-| 创作进度轮询 | **Zustand** + REST 定时 fetch | 仅 `creationPace: auto` 的 Job 进度 |
+| 规划进度轮询 | **Zustand** + REST 定时 fetch | `planning_jobs`；`planning_ready` 后跳转 L4 |
+| 创作进度轮询 | **Zustand** + REST 定时 fetch | `creationPace: auto` 的 `generation_jobs` |
+| Phase 4 校验进度 | **RSC** + 可选 REST | `status=validating`；读写作计划与各章字数状态 |
+| 全局错误提示 | Toast / Banner | 映射 `messages/en.json` → `errors.*`（REQ-018-AC-006） |
 | URL 可分享状态 | `searchParams` | 当前章 `?chapter=3` |
 
 **原则：** 业务真源不在 Zustand；仅 UI 草稿与 Job 轮询快照。
@@ -479,8 +499,27 @@ flowchart TB
 ### 7.3 UI 组件
 
 - 基础组件：`components/ui/*`（shadcn CLI 生成）
-- 业务：`components/novel/*`（向导步、大纲表、进度条、阅读器）
-- 披露层级 L0-L5 对应页面/折叠区（requirements §5）
+- 布局：`components/layout/AppShell.tsx`（顶栏：作品、知识库、设置）
+- 业务：`components/novel/*`
+  - `WizardStep*` — L1–L3 分步
+  - `QuickStartForm` / `ExtractResultPanel` — L0 快捷开写
+  - `PlanningProgress` — 规划 Job 轮询
+  - `PlanPreview` — L4 摘要 + 模式选择
+  - `WriteProgress` — L5（写作 / 校验双模式，由 `project.status` 切换）
+  - `CompleteSummary` — 完成页统计
+  - `ChapterReader` / `ChapterEditor` — 阅读 / 编辑
+- 披露层级 L0-L5 对应页面/折叠区（requirements 披露表）
+
+### 7.4 客户端错误展示
+
+| 来源 | 处理 |
+|------|------|
+| Server Actions `{ ok: false, error: { code } }` | `useActionState` → `toast.error(tErrors(code))` |
+| REST 4xx/5xx | `fetch` 解析 `error.code` → 同上 |
+| 限流 429 | 非阻塞 Toast；文案 `errors.rateLimited` |
+| 未登录 401 | `middleware` 跳转 `/auth/sign-in?callbackUrl=...` |
+
+`messages/en.json` 中 `errors` 键与 [api.md](./api.md) §3.5 错误码一一对应；**不**在 `messages/zh.json` 重复错误文案。
 
 ---
 
@@ -516,7 +555,7 @@ flowchart TB
 | 文档 | 内容 | 状态 |
 |------|------|------|
 | **[data.md](./data.md)** | ER 图、表结构、Drizzle schema 约定、存储键约定 | **v1.2.0 已定稿** |
-| **[api.md](./api.md)** | REST/Route Handler 列表、请求/响应、错误码、鉴权 | **v1.2.0 已定稿** |
+| **[api.md](./api.md)** | REST/Route Handler 列表、请求/响应、错误码、鉴权 | **v1.4.0 已定稿** |
 
 **设计层已约定的跨文档契约（写入 data/api 时需保持一致）：**
 
@@ -558,11 +597,14 @@ flowchart TB
 
 | 优先级 | 场景 | 对应需求 |
 |--------|------|----------|
-| P0 | 登录 → 完整向导 → 规划确认 → 自动创作 → 校验 → 阅读 → 导出 | 主路径 |
+| P0 | 访客营销首页 → 登录 → 完整向导 → 规划轮询 → L4 → 自动创作 → 校验进度 → 完成页 → 阅读 → 导出 | 主路径 |
 | P0 | 手动模式：按序生成本章 | 澄清 #1 |
+| P0 | 仪表盘：`draft` 恢复向导；`planning` 生成中 vs 待确认 | REQ-002 v1.4.0 |
+| P0 | `validating` 续写无「生成本章」 | REQ-011-AC-005 |
 | P1 | 快捷开写二选一 | 澄清 #3 |
 | P1 | 知识库绑定 + 章节重生 | REQ-015、REQ-016 |
 | P1 | 编辑、润色、一致性检查 | REQ-013 |
+| P1 | 限流 Toast、未登录 callbackUrl | REQ-018-AC-006 |
 
 - 配置：Chromium 为主；CI 可选 Firefox/WebKit（AGENTS.md）
 - 测试数据：见未来 `seed.md`；E2E 使用独立 DB + 独立 R2 dev Bucket（或 mock）
@@ -586,7 +628,7 @@ flowchart TB
 | 未授权访问 | NextAuth + 中间件 + Service 层 `userId` 过滤 | REQ-002、REQ-018 |
 | 水平越权 | 所有 project 查询带 `userId` | 澄清 #4 |
 | API 密钥泄露 | 环境变量 + 加密存储 + 日志脱敏 | REQ-014、REQ-018 |
-| 速率滥用 | 全 API  IP 限流 100 次/小时（可配置） | AGENTS.md |
+| 速率滥用 | 全 API + Server Actions IP 限流 100 次/小时；UI Toast（REQ-018-AC-006） | AGENTS.md |
 | 路径遍历 | `WorkspaceService` 规范化路径，禁止 `..` | REQ-007 |
 | 文件上传 | 知识库 MIME/大小白名单 | REQ-015 |
 | LLM 注入 | 模版化 prompt；用户输入转义；输出校验 | 通用 |
@@ -653,7 +695,8 @@ flowchart LR
 | 1.1.0 | 2026-05-23 | 全量交付策略；补充 export/knowledge 路由 |
 | 1.2.0 | 2026-05-23 | R2StorageDriver 完整实现规范；扩展 StorageDriver 二进制读写 |
 | 1.3.0 | 2026-05-23 | **R2 唯一存储**；移除 LocalStorageDriver；库仅存 R2 对象键 |
+| 1.4.0 | 2026-05-23 | UI/访问 P0：`planning`/`complete` 路由、状态跳转表、校验模式 WriteProgress、错误 Toast、E2E 扩展 |
 
 ---
 
-*下游文档：[data.md](./data.md)、[api.md](./api.md) 按 PostgreSQL 方案对齐。*
+*下游文档：[data.md](./data.md)、[api.md](./api.md) 按 PostgreSQL 与 requirements v1.4.0 对齐。*

@@ -7,7 +7,7 @@
 | 版本 | **1.3.0** |
 | 状态 | **已定稿** |
 | 定稿日期 | 2026-05-23 |
-| 上游 | [requirements.md](./requirements.md) v1.3.0、[design.md](./design.md) v1.3.0 |
+| 上游 | [requirements.md](./requirements.md) v1.4.0、[design.md](./design.md) v1.4.0 |
 | 下游 | [api.md](./api.md)（接口契约）、`drizzle/schema/*`（实现） |
 | ORM | Drizzle ORM + PostgreSQL 16.x |
 | 迁移目录 | `drizzle/migrations/` |
@@ -510,7 +510,8 @@ sequenceDiagram
 | 章节列表 API | `content_files` + `02-写作计划.json` 章节状态合并 |
 | 章节正文预览/阅读 | `R2StorageDriver.readText`（键 = `storage_prefix` + `relative_path`） |
 | 创作进度（自动） | `generation_jobs` + JSON `chapters[].status` |
-| 首页续写卡片 | `projects.status` + JSON 统计 `completed/total` |
+| 规划生成中 | `planning_jobs` + `projects.planning_ready` |
+| 仪表盘 / 首页卡片 | `projects.status`、`planning_ready` + JSON：`writing`/`validating` 用 `completed/total`；`validating` 文案区分「校验中」 |
 
 ### 7.3 同步职责
 
@@ -618,7 +619,8 @@ drizzle/
 | 列表不返正文 | `content_files` 仅返 `relativePath`、`chapterNumber`、`status`（来自 JSON） |
 | 未登录 | 无 session → 不查库，直接 401 |
 | 跨用户 | `project.user_id !== session.user.id` → **404** |
-| 进度轮询 | `GET .../jobs/:jobId` 读 `generation_jobs` + JSON 摘要 |
+| 进度轮询 | `GET .../planning-jobs/:jobId`、`GET .../generation-jobs/:jobId` |
+| 仪表盘跳转 | `status` + `planning_ready` → `resumeHref`（见 api.md §7.1） |
 
 ---
 
@@ -630,6 +632,7 @@ drizzle/
 | 1.0.1 | 2026-05-22 | 数据库方案切换至 PostgreSQL |
 | 1.2.0 | 2026-05-23 | R2 与 local 双驱动完整实现；对象键约定与 knowledge/export 路径 |
 | 1.3.0 | 2026-05-23 | **R2 唯一存储**；DB 字段明确为 R2 对象键；移除本地文件系统 |
+| 1.3.1 | 2026-05-23 | 读路径补充规划 Job、仪表盘 `planning_ready` 分流（对齐 requirements/api v1.4.0） |
 
 ---
 

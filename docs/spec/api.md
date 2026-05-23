@@ -4,10 +4,10 @@
 
 | 项 | 内容 |
 |----|------|
-| 版本 | **1.3.0** |
+| 版本 | **1.4.0** |
 | 状态 | **已定稿** |
 | 定稿日期 | 2026-05-23 |
-| 上游 | [requirements.md](./requirements.md) v1.3.0、[design.md](./design.md) v1.3.0、[data.md](./data.md) v1.3.0 |
+| 上游 | [requirements.md](./requirements.md) v1.4.0、[design.md](./design.md) v1.4.0、[data.md](./data.md) v1.3.0 |
 | 实现目录 | `app/api/*`（REST）、`app/actions/*`（Server Actions） |
 
 **范围说明：** 本文定义对外契约（REST Route Handlers + Server Actions）、鉴权、错误码与速率限制。**不**重复数据库字段，见 [data.md](./data.md)。
@@ -96,9 +96,11 @@ type ActionResult<T> =
   | { ok: false; error: { code: string; message: string } };
 ```
 
-**文案语言：** 用户可见 `message` **一律英文**（requirements）；UI 可用 `error.code` 映射 i18n。
+**文案语言：** 用户可见 `message` **一律英文**（requirements）；UI **必须**用 `error.code` 映射 `messages/en.json` 的 `errors.*`（与用户界面 locale 无关）。
 
-### 3.4 速率限制（REQ-018-AC-004）
+**Server Actions 约定：** `error.code` 与 REST 错误码同名；客户端禁止直接展示 `message` 字符串（便于统一文案与测试）。
+
+### 3.4 速率限制（REQ-018-AC-004、AC-006）
 
 | 项 | 值 |
 |----|-----|
@@ -108,6 +110,29 @@ type ActionResult<T> =
 | 实现 | `middleware` 或 Route 包装器；键 = IP；可按 `userId` 细分 |
 
 Server Actions 建议同样经过限流包装（共享计数器）。
+
+**UI 反馈（REQ-018-AC-006）：** 超限或 Action 返回 `RATE_LIMIT_EXCEEDED` 时，当前页面以 Toast/Banner 展示 `tErrors('rateLimited')`，不得静默失败。
+
+### 3.5 错误码 → 客户端 `errors.*` 映射
+
+| `error.code` | `messages/en.json` 键 | 建议 UI |
+|--------------|----------------------|---------|
+| `UNAUTHORIZED` | `errors.unauthorized` | 跳转登录（middleware 优先） |
+| `VALIDATION_ERROR` | `errors.validation` | 表单字段旁提示 |
+| `RATE_LIMIT_EXCEEDED` | `errors.rateLimited` | Toast |
+| `PROJECT_NOT_FOUND` | `errors.projectNotFound` | Toast + 回仪表盘 |
+| `INVALID_PROJECT_STATE` | `errors.invalidProjectState` | Toast |
+| `PLANNING_NOT_READY` | `errors.planningNotReady` | 跳转 `/planning` 轮询 |
+| `PLANNING_JOB_FAILED` | `errors.planningJobFailed` | 规划页展示 + 重试按钮 |
+| `CHAPTER_ORDER_VIOLATION` | `errors.chapterOrderViolation` | Toast |
+| `CHAPTER_NOT_GENERATABLE` | `errors.chapterNotGeneratable` | Toast |
+| `JOB_NOT_FOUND` | `errors.jobNotFound` | Toast |
+| `STORAGE_IO_ERROR` | `errors.storageIo` | Toast |
+| `LLM_PROVIDER_ERROR` | `errors.llmProvider` | Toast |
+| `EXPORT_FAILED` | `errors.exportFailed` | 导出页内联 |
+| `INTERNAL_ERROR` | `errors.internal` | Toast |
+
+实现：`lib/errors/action-error.ts` 统一构造 `{ code, message }`；`message` 为英文兜底，UI 以 `code` 为准。
 
 ---
 
@@ -119,7 +144,8 @@ Server Actions 建议同样经过限流包装（共享计数器）。
 | `VALIDATION_ERROR` | 400 | 参数校验失败 |
 | `PROJECT_NOT_FOUND` | 404 | 作品不存在或无权 |
 | `INVALID_PROJECT_STATE` | 409 | 状态机不允许 |
-| `PLANNING_NOT_READY` | 409 | L4 时规划未就绪 |
+| `PLANNING_NOT_READY` | 409 | L4 时规划未就绪；应跳转规划轮询页 |
+| `PLANNING_JOB_FAILED` | 409 | 规划任务失败；展示重试 |
 | `CHAPTER_ORDER_VIOLATION` | 409 | 手动模式跳章 |
 | `CHAPTER_NOT_GENERATABLE` | 409 | 目标章非 pending/failed 或非正常当前章 |
 | `JOB_NOT_FOUND` | 404 | 任务不存在 |
@@ -411,7 +437,11 @@ type ConfirmPlanInput = {
 }
 ```
 
-规划完成时 `planningReady: true`，前端跳转 L4。
+| 行为 | 说明 |
+|------|------|
+| `planningReady: false` 且 `job.status` ∈ `pending`/`running` | 停留 `/projects/{id}/planning` 轮询 |
+| `planningReady: true` | 自动跳转 `/projects/{id}/plan`（L4） |
+| `job.status === 'failed'` | 展示 `lastError`（英文）+ 重试 `planning.startPlanning` |
 
 ---
 
@@ -497,16 +527,30 @@ type ProjectListItem = {
   status: 'draft' | 'planning' | 'writing' | 'validating' | 'completed';
   planningReady: boolean;
   updatedAt: string;
-  progressLabel?: string; // e.g. "12/20 chapters"
-  resumeHref: string;     // 续写 / 继续确认规划
+  progressLabel?: string; // 写作："12/20 章"；校验："校验中 8/20 章"
+  resumeLabel: string;    // 卡片 CTA：继续向导 / 规划生成中 / 继续确认规划 / 续写 / 继续校验
+  resumeHref: string;
 };
 ```
 
-| status | `resumeHref` 逻辑 |
-|--------|-------------------|
-| `writing` / `validating` | `/projects/{id}/write` |
-| `planning` + `planningReady` | `/projects/{id}/plan` |
-| `draft` | `/projects/{id}/wizard` |
+| status | 条件 | `resumeHref` | `resumeLabel` | `progressLabel` |
+|--------|------|--------------|---------------|-----------------|
+| `draft` | — | `/projects/{id}/wizard` | 继续向导 | — |
+| `planning` | `planningReady=false` | `/projects/{id}/planning` | 规划生成中 | 可选 Job 百分比 |
+| `planning` | `planningReady=true` | `/projects/{id}/plan` | 继续确认规划 | — |
+| `writing` | — | `/projects/{id}/write` | 续写 | `{completed}/{total} 章` |
+| `validating` | — | `/projects/{id}/write` | 继续校验 | `校验中 {done}/{total} 章` |
+| `completed` | — | `/projects/{id}/complete` | 查看作品 | 总章数/总字数摘要 |
+
+`resumeHref` 由 `getResumeHref(project)` 集中生成（见 design.md §7.1）。
+
+---
+
+### 7.1.1 校验进度 `getValidationProgress(projectId)`（RSC）
+
+| 返回 | `totalChapters`、`checkedChapters`、`failedChapters`、`chapters[]`（章号、字数、`wordCountPass`） |
+| 用途 | `status=validating` 时 `WriteProgress` 校验模式；**不**暴露 Phase 3「生成本章」 |
+| 数据源 | `02-写作计划.json` + 各章 `.md` 字数统计 |
 
 ---
 
@@ -550,10 +594,10 @@ type ProjectDetail = {
 | projects.status | 允许的主要 Action |
 |-----------------|-------------------|
 | `draft` | `wizard.*`, `quickStart.*`, `planning.startPlanning`, `knowledge.bindToProject` |
-| `planning` | `planning.confirmPlan`（需 `planningReady`）；规划 Job 轮询 |
+| `planning` | `planning.startPlanning`（重试）；`planning.confirmPlan`（仅 `planningReady`）；禁止 L4 当 `planningReady=false` |
 | `writing` | `writing.*`, `regenerate.*`, `knowledge.bindToProject`（增删规则见 REQ-015） |
-| `validating` | 只读 + 校验进度 |
-| `completed` | 阅读 RSC；`editor.*`；`export.*`；`regenerate.*` |
+| `validating` | 只读进度 RSC；禁止 `writing.generateChapter`；校验失败时 Worker 内部重写 |
+| `completed` | 阅读 RSC；`editor.*`；`export.*`；`regenerate.*`；默认入口 `/complete` |
 
 ---
 
@@ -570,9 +614,13 @@ type ProjectDetail = {
 | 1 | 所有 Action 入口 `requireUser()` |
 | 2 | `projectId` 路径均校验 `user_id` |
 | 3 | 错误 `message` 英文，无 stack leak |
-| 4 | `/api/*` 全局限流 100/h/IP |
+| 4 | `/api/*` 与 Server Actions 全局限流 100/h/IP；UI Toast（REQ-018-AC-006） |
 | 5 | Job 轮询响应不含章节全文 |
 | 6 | `confirmPlan` 仅在 `planning` + `planning_ready` 可调用 |
+| 7 | `getProjectsForDashboard` 的 `resumeHref` 符合 §7.1 表 |
+| 8 | `validating` 项目列表/首页不得出现「生成本章」类 CTA |
+| 9 | `planning` 未完成时访问 `/plan` 返回 409 或重定向 `/planning` |
+| 10 | `completed` 默认跳转 `/projects/{id}/complete` |
 | 8 | `confirmPlan` 支持 `parallel` 且校验 manual→serial |
 | 9 | 知识库上传/绑定/解析失败返回英文 message |
 | 11 | `deletePrefix` 删除 R2 前缀下全部对象 |
@@ -588,7 +636,8 @@ type ProjectDetail = {
 | 1.1.0 | 2026-05-23 | 全量 Action/API |
 | 1.2.0 | 2026-05-23 | 存储相关错误码；R2 与 local 契约一致 |
 | 1.3.0 | 2026-05-23 | **R2 唯一存储**；API 返回 R2 对象键路径 |
+| 1.4.0 | 2026-05-23 | UI/访问 P0：`resumeHref` 全状态表、`PLANNING_JOB_FAILED`、`errors.*` 映射、校验进度 RSC、限流 UI |
 
 ---
 
-*实现顺序建议：Auth → `projects.createProject` → 向导 Actions → `planning.*` → Job 轮询 API → Worker。*
+*实现顺序建议：Auth → `projects.createProject` → 向导 Actions → `planning.*` → Job 轮询 API → Worker → 完成页/校验模式 UI。*

@@ -1,6 +1,6 @@
 # 实施计划
 
-执行时需严格遵循 `docs/spec/requirements.md` 中对应需求的验收标准。技术细节以 `docs/spec/design.md`、`docs/spec/data.md`、`docs/spec/api.md` 为准。每项任务通过 `_需求:` 引用需求编号。
+执行时需严格遵循 `docs/spec/requirements.md`（v1.4.0）中对应需求的验收标准。技术细节以 `docs/spec/design.md`（v1.4.0）、`docs/spec/data.md`、`docs/spec/api.md`（v1.4.0）为准。每项任务通过 `_需求:` 引用需求编号。
 
 **交付策略：** 项目**不分期裁剪**，REQ-001 ~ REQ-018 均为当前版本验收范围。下列任务按依赖顺序排列，可并行处标注。
 
@@ -51,20 +51,20 @@
   - [x] `pnpm db:migrate` 成功
   - _需求：REQ-002、REQ-007、REQ-017、REQ-008、REQ-010、REQ-014、REQ-015、REQ-012_
 
-- [ ] **TASK-003. R2StorageDriver（唯一对象存储）**
+- [x] **TASK-003. R2StorageDriver（唯一对象存储）**
 
-  - [ ] `lib/storage/types.ts`：`readText`/`writeText`/`readBytes`/`writeBytes`/`exists`/`list`/`deletePrefix`
-  - [ ] `lib/storage/r2-storage-driver.ts`：`@aws-sdk/client-s3`；Put/Get/Head/List/DeleteObjects；分页 `deletePrefix`
-  - [ ] `lib/storage/index.ts` → `createStorageDriver()` **仅**返回 `R2StorageDriver`；`config/storage.ts` 校验全部 `R2_*` 必填 env
-  - [ ] 单元测试：mock S3Client（含 `deletePrefix` 批量删除）；**不**实现本地文件系统驱动
-  - [ ] 集成测试（可选）：对 dev R2 Bucket 冒烟读写（`.env.test`，CI 可 skip）
+  - [x] `lib/storage/types.ts`：`readText`/`writeText`/`readBytes`/`writeBytes`/`exists`/`list`/`deletePrefix`
+  - [x] `lib/storage/r2-storage-driver.ts`：`@aws-sdk/client-s3`；Put/Get/Head/List/DeleteObjects；分页 `deletePrefix`
+  - [x] `lib/storage/index.ts` → `createStorageDriver()` **仅**返回 `R2StorageDriver`；`config/storage.ts` 校验全部 `R2_*` 必填 env
+  - [x] 单元测试：mock S3Client（含 `deletePrefix` 批量删除）；**不**实现本地文件系统驱动
+  - [x] 集成测试（可选）：对 dev R2 Bucket 冒烟读写（`.env.test`，CI 可 skip）
   - _需求：REQ-007（AC-005、AC-006）_
 
-- [ ] **TASK-004. 领域基础：归属校验与状态机**
+- [x] **TASK-004. 领域基础：归属校验与状态机**
 
-  - [ ] `lib/db/index.ts`、`require-user.ts`、`get-project-for-user.ts`
-  - [ ] `project-state-machine.ts` 五态转换
-  - [ ] 单元测试：非法转换、越权
+  - [x] `lib/db/index.ts`、`require-user.ts`、`get-project-for-user.ts`
+  - [x] `project-state-machine.ts` 五态转换
+  - [x] 单元测试：非法转换、越权
   - _需求：REQ-017、REQ-002、REQ-018_
 
 ---
@@ -82,6 +82,7 @@
   - [ ] `middleware.ts`：未登录跳转 + `callbackUrl`
   - [ ] next-intl（默认 `zh`，错误 `errors.*` 英文）
   - [ ] `/api/*` IP 限流 100/h；Server Actions 共享限流
+  - [ ] 限流/401 等 `errorKey` 在页面以 Toast 或 Banner 展示（REQ-018-AC-006）
   - _需求：REQ-018、REQ-002、REQ-003_
 
 ---
@@ -93,15 +94,16 @@
   - [ ] `preference-service.ts`；L1/L2 静默合并
   - [ ] 双写 `user-preferences.json`
   - [ ] `preferences.update`、`preferences.reset` + 设置页
+  - [ ] `app/[locale]/(app)/settings` 统一导航：偏好 + AI 模型子页（REQ-001-AC-005）
   - _需求：REQ-001_
 
 - [ ] **TASK-008. 作品 CRUD 与仪表盘**
 
   - [ ] `projects.createProject`、`projects.deleteProject`（Q6 软删流程）
-  - [ ] `getProjectsForDashboard()`：五态、续写/继续规划入口
+  - [ ] `getProjectsForDashboard()`：五态入口映射（`draft`→向导、`planning` 生成中/待确认、`writing`/`validating`→进度、`completed`→完成页）
   - [ ] `getProjectDetail()`：元数据不含正文
-  - [ ] `app/[locale]/(app)/dashboard`
-  - _需求：REQ-002_
+  - [ ] `app/[locale]/(app)/dashboard`：列表卡片按状态跳转正确路由
+  - _需求：REQ-002、REQ-017_
 
 ---
 
@@ -115,10 +117,11 @@
 
 - [ ] **TASK-010. Phase 0 快捷开写**
 
-  - [ ] 首页 L0：新建、续写、快捷输入
+  - [ ] `app/[locale]/(marketing)` 访客营销首页：价值说明 + 登录/注册 CTA（REQ-003-AC-011）
+  - [ ] 已登录首页 L0：新建、续写、快捷输入
   - [ ] `quickStart.extract`、`quickStart.choosePath`
   - [ ] 提取结果页二选一；全空仅向导
-  - [ ] E2E `tests/e2e/quick-start.spec.ts`
+  - [ ] E2E `tests/e2e/quick-start.spec.ts`；`tests/e2e/marketing-guest.spec.ts`（访客不可见创作控件）
   - _需求：REQ-003_
 
 ---
@@ -135,12 +138,12 @@
 - [ ] **TASK-012. 规划进度轮询 API**
 
   - [ ] `GET /api/projects/[projectId]/planning-jobs/[jobId]`
-  - [ ] 规划生成中 UI 轮询
+  - [ ] `app/.../projects/[projectId]/planning`：规划生成中轮询 UI；失败重试；`planning_ready` 后跳转 L4（REQ-008-AC-007/008）
   - _需求：REQ-008、REQ-002_
 
 - [ ] **TASK-013. L4 规划确认与模式选择**
 
-  - [ ] 规划预览页（前 5 章摘要 + 折叠全文 + 知识库勾选）
+  - [ ] `app/.../plan` 规划预览页（前 5 章摘要 + 折叠全文 + 知识库勾选）
   - [ ] `planning.confirmPlan`：`serial`/`parallel` + `auto`/`manual`
   - [ ] `creationPace=auto` → 创建 `generation_jobs`
   - _需求：REQ-009、REQ-008、REQ-017、REQ-015_
@@ -160,7 +163,7 @@
 
   - [ ] Worker 消费 `generation_jobs`；串行/并行模式
   - [ ] `GET .../generation-jobs/[jobId]` + `writeProgressStore`
-  - [ ] L5 自动模式 UI
+  - [ ] `app/.../write` L5：自动模式进度条 + 并行批次进度（若 `writingMode=parallel`）
   - _需求：REQ-010、REQ-009、REQ-018_
 
 - [ ] **TASK-016. 手动创作模式**
@@ -177,13 +180,14 @@
 - [ ] **TASK-017. Phase 4 全书校验**
 
   - [ ] `validation-service.ts`；`validating` ↔ 重写
+  - [ ] L5 共用路由：`status=validating` 时展示 Phase 4 校验进度（REQ-011-AC-005）
+  - [ ] `app/.../complete` 完成页：统计 + 阅读/编辑/导出入口（REQ-011-AC-006、REQ-012-AC-002）
   - [ ] 完成报告（⚠️ 失败章）
-  - _需求：REQ-011、REQ-017_
+  - _需求：REQ-011、REQ-017、REQ-012_
 
 - [ ] **TASK-018. 在线阅读器**
 
   - [ ] `app/.../read`：目录 + MD 正文；章首引子样式
-  - [ ] 完成页：统计 + 阅读/编辑/导出入口
   - _需求：REQ-012_
 
 ---
@@ -278,11 +282,13 @@
 
 - [ ] **TASK-028. E2E 核心旅程（Playwright）**
 
-  - [ ] 完整向导 → 规划 → 自动创作 → 校验 → 阅读 → 导出
+  - [ ] 完整向导 → 规划（含生成中轮询）→ L4 确认 → 自动创作 → 校验进度 → 完成页 → 阅读 → 导出
   - [ ] 快捷开写、手动模式、知识库绑定、章节重生
-  - [ ] 未登录跳转登录
+  - [ ] 访客营销首页：无创作控件；受保护路由未登录跳转登录 + `callbackUrl`
+  - [ ] 仪表盘：`draft` 恢复向导；`planning` 生成中 vs 待确认分流
+  - [ ] `validating` 续写展示校验进度（无「生成本章」）
   - [ ] `pnpm test:e2e` 通过
-  - _需求：REQ-001~016 主路径_
+  - _需求：REQ-001~018 主路径与 UI/访问 P0_
 
 - [ ] **TASK-029. 构建与类型检查（DoD）**
 
@@ -300,3 +306,4 @@
 | 1.1.0 | 2026-05-23 | **全量交付**；TASK-019~026 |
 | 1.2.0 | 2026-05-23 | R2 完整实现并入 TASK-003；移除独立 TASK-027；任务 renumber 27~29 |
 | 1.3.0 | 2026-05-23 | **R2 唯一存储**；TASK-003 移除 local 驱动；dev 亦需 R2 |
+| 1.4.0 | 2026-05-23 | 对齐 requirements v1.4.0：UI/访问 P0（营销页、状态入口、规划/校验进度、完成页、设置导航、E2E） |

@@ -6,27 +6,53 @@ describe("config/storage", () => {
     vi.resetModules();
   });
 
-  test("should default to local driver", async () => {
+  test("should read required R2 env with default endpoint and region", async () => {
+    vi.stubEnv("R2_ACCOUNT_ID", "account-id");
+    vi.stubEnv("R2_ACCESS_KEY_ID", "access-key");
+    vi.stubEnv("R2_SECRET_ACCESS_KEY", "secret-key");
+    vi.stubEnv("R2_BUCKET", "bucket-name");
+
     const storageConfig = await import("../../../config/storage");
 
-    expect(storageConfig.STORAGE_DRIVER).toBe("local");
-    expect(storageConfig.getStorageDriver()).toBe("local");
+    expect(storageConfig.getR2StorageConfig()).toEqual({
+      accountId: "account-id",
+      accessKeyId: "access-key",
+      secretAccessKey: "secret-key",
+      bucket: "bucket-name",
+      endpoint: "https://account-id.r2.cloudflarestorage.com",
+      region: "auto",
+    });
   });
 
-  test("should support r2 driver", async () => {
-    vi.stubEnv("STORAGE_DRIVER", "r2");
+  test("should allow overriding endpoint and region", async () => {
+    vi.stubEnv("R2_ACCOUNT_ID", "account-id");
+    vi.stubEnv("R2_ACCESS_KEY_ID", "access-key");
+    vi.stubEnv("R2_SECRET_ACCESS_KEY", "secret-key");
+    vi.stubEnv("R2_BUCKET", "bucket-name");
+    vi.stubEnv("R2_ENDPOINT", "https://custom-r2.example.com");
+    vi.stubEnv("R2_REGION", "us-east-1");
+
     const storageConfig = await import("../../../config/storage");
 
-    expect(storageConfig.STORAGE_DRIVER).toBe("r2");
-    expect(storageConfig.getStorageDriver()).toBe("r2");
+    expect(storageConfig.getR2StorageConfig()).toEqual({
+      accountId: "account-id",
+      accessKeyId: "access-key",
+      secretAccessKey: "secret-key",
+      bucket: "bucket-name",
+      endpoint: "https://custom-r2.example.com",
+      region: "us-east-1",
+    });
   });
 
-  test("should throw when storage driver is invalid", async () => {
-    vi.stubEnv("STORAGE_DRIVER", "memory");
+  test("should throw when required env is missing", async () => {
+    vi.stubEnv("R2_ACCESS_KEY_ID", "access-key");
+    vi.stubEnv("R2_SECRET_ACCESS_KEY", "secret-key");
+    vi.stubEnv("R2_BUCKET", "bucket-name");
+
     const storageConfig = await import("../../../config/storage");
 
-    expect(() => storageConfig.getStorageDriver()).toThrowError(
-      "Invalid STORAGE_DRIVER value: memory",
+    expect(() => storageConfig.getR2StorageConfig()).toThrowError(
+      "Missing required environment variable: R2_ACCOUNT_ID",
     );
   });
 });
