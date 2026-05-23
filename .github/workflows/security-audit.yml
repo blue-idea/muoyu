@@ -101,6 +101,8 @@ jobs:
   secret-scan:
     name: Secret Scan
     runs-on: ubuntu-latest
+    env:
+      GITLEAKS_VERSION: "8.30.1"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -109,12 +111,15 @@ jobs:
 
       - name: Install Gitleaks CLI
         run: |
-          curl -sSfL https://raw.githubusercontent.com/gitleaks/gitleaks/master/install.sh | sh -s -- -b /usr/local/bin
+          curl -sSfL -o gitleaks.tar.gz \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          tar -xzf gitleaks.tar.gz gitleaks
+          sudo install -m 0755 gitleaks /usr/local/bin/gitleaks
           gitleaks version
 
       - name: Run Gitleaks
         run: |
-          gitleaks git --redact --exit-code 1 --verbose
+          gitleaks git --source . --redact --exit-code 1 --verbose
 
   security-gate:
     name: Security Gate
