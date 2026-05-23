@@ -115,13 +115,13 @@
   - [x] 分步 UI（一屏一事、🎲 随机、L3 LLM 标题）
   - _需求：REQ-004、REQ-005、REQ-006_
 
-- [ ] **TASK-010. Phase 0 快捷开写**
+- [x] **TASK-010. Phase 0 快捷开写**（完成于 2026-05-23，PR #6 已合并）
 
-  - [ ] `app/[locale]/(marketing)` 访客营销首页：价值说明 + 登录/注册 CTA（REQ-003-AC-011）
-  - [ ] 已登录首页 L0：新建、续写、快捷输入
-  - [ ] `quickStart.extract`、`quickStart.choosePath`
-  - [ ] 提取结果页二选一；全空仅向导
-  - [ ] E2E `tests/e2e/quick-start.spec.ts`；`tests/e2e/marketing-guest.spec.ts`（访客不可见创作控件）
+  - [x] `app/[locale]/(marketing)` 访客营销首页：价值说明 + 登录/注册 CTA（REQ-003-AC-011）
+  - [x] 已登录首页 L0：新建、续写、快捷输入
+  - [x] `quickStart.extract`、`quickStart.choosePath`
+  - [x] 提取结果页二选一；全空仅向导
+  - [x] E2E `tests/e2e/quick-start.spec.ts`；`tests/e2e/marketing-guest.spec.ts`（访客不可见创作控件）
   - _需求：REQ-003_
 
 ---
