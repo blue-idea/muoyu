@@ -1,5 +1,9 @@
-import { redirect } from "next/navigation";
-import NextAuth, { getServerSession, type NextAuthOptions } from "next-auth";
+/**
+ * NextAuth v5 配置
+ * 所有导出均来自 next-auth v5 beta API
+ */
+import NextAuth from "next-auth";
+import type { Session } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import GitHub from "next-auth/providers/github";
 import Google from "next-auth/providers/google";
@@ -11,17 +15,15 @@ import { readEnvString } from "@/config/env";
 import { users } from "@/drizzle/schema/auth";
 import { getAuthDb } from "./db";
 
+// ---------------------------------------------------------------------------
+// 类型
+// ---------------------------------------------------------------------------
+
 type AuthProvider = "credentials" | "github" | "google";
 
-type SignInOptions = {
-  redirectTo?: string;
-  email?: string;
-  password?: string;
-};
-
-type SignOutOptions = {
-  redirectTo?: string;
-};
+// ---------------------------------------------------------------------------
+// 辅助函数
+// ---------------------------------------------------------------------------
 
 function createAdapter() {
   const databaseUrl = readEnvString("DATABASE_URL", "");
@@ -43,13 +45,17 @@ function buildOAuthSignInUrl(provider: "github" | "google", callbackUrl: string)
   return `/api/auth/signin/${provider}?${query.toString()}`;
 }
 
+// ---------------------------------------------------------------------------
+// NextAuth 配置
+// ---------------------------------------------------------------------------
+
 const adapter = createAdapter();
 const authSecret = readEnvString("AUTH_SECRET", "");
 
-export const authOptions: NextAuthOptions = {
+const authOptions = {
   adapter,
   session: {
-    strategy: adapter ? "database" : "jwt",
+    strategy: adapter ? "database" as const : "jwt" as const,
   },
   secret: authSecret,
   providers: [
@@ -60,8 +66,9 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        const email = credentials?.email?.trim().toLowerCase() ?? "";
-        const password = credentials?.password ?? "";
+        const rawEmail = (credentials as { email?: string } | undefined)?.email;
+        const email = typeof rawEmail === "string" ? rawEmail.trim().toLowerCase() : "";
+        const password = (credentials as { password?: string } | undefined)?.password ?? "";
 
         if (email.length === 0 || password.length === 0) {
           return null;
@@ -101,8 +108,8 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async session({ session, user }) {
-      if (session.user && user?.id) {
+    session({ session, user }: { session: Session; user: { id: string } }): Session {
+      if (session.user) {
         session.user.id = user.id;
       }
       return session;
@@ -110,28 +117,25 @@ export const authOptions: NextAuthOptions = {
   },
 };
 
-const nextAuthHandler = NextAuth(authOptions);
+// ---------------------------------------------------------------------------
+// 导出（next-auth v5 格式）
+// ---------------------------------------------------------------------------
 
-export const handlers = {
-  GET: nextAuthHandler,
-  POST: nextAuthHandler,
-};
+export const { handlers, auth, signIn, signOut } = NextAuth(authOptions);
 
-export async function auth() {
-  return getServerSession(authOptions);
-}
-
-export async function signIn(provider: AuthProvider, options: SignInOptions = {}) {
+export async function signInProvider(provider: AuthProvider, options: { redirectTo?: string } = {}) {
   if (provider === "credentials") {
     throw new Error("Credentials sign-in should use /api/auth/callback/credentials.");
   }
 
   const callbackUrl = readRedirectTo(options.redirectTo, "/dashboard");
+  const { redirect } = await import("next/navigation");
   redirect(buildOAuthSignInUrl(provider, callbackUrl));
 }
 
-export async function signOut(options: SignOutOptions = {}) {
+export async function signOutProvider(options: { redirectTo?: string } = {}) {
   const callbackUrl = readRedirectTo(options.redirectTo, "/");
+  const { redirect } = await import("next/navigation");
   const query = new URLSearchParams({ callbackUrl });
   redirect(`/api/auth/signout?${query.toString()}`);
 }
