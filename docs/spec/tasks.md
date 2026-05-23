@@ -77,12 +77,12 @@
   - [x] 注册/登录页、`app/api/auth/[...nextauth]/route.ts`
   - _需求：REQ-001、REQ-018_
 
-- [ ] **TASK-006. 中间件：Auth + i18n + 限流**
+- [x] **TASK-006. 中间件：Auth + i18n + 限流**（完成于 2026-05-23，PR #2 已合并）
 
-  - [ ] `middleware.ts`：未登录跳转 + `callbackUrl`
-  - [ ] next-intl（默认 `zh`，错误 `errors.*` 英文）
-  - [ ] `/api/*` IP 限流 100/h；Server Actions 共享限流
-  - [ ] 限流/401 等 `errorKey` 在页面以 Toast 或 Banner 展示（REQ-018-AC-006）
+  - [x] `middleware.ts`：未登录跳转 + `callbackUrl`
+  - [x] next-intl（默认 `zh`，错误 `errors.*` 英文）
+  - [x] `/api/*` IP 限流 100/h；Server Actions 共享限流
+  - [x] 限流/401 等 `errorKey` 在页面以 Toast 或 Banner 展示（REQ-018-AC-006）
   - _需求：REQ-018、REQ-002、REQ-003_
 
 ---
