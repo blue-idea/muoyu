@@ -1,100 +1,46 @@
-# TASK-005 完成摘要
+# TASK-006 完成报告
 
-## 任务概述
+## 完成摘要
 
-实现 NextAuth v5 (Auth.js) 三合一认证：**Credentials（邮箱+密码）+ GitHub OAuth + Google OAuth**，使用 Drizzle Adapter + Database Session。
+实现了中间件（Auth + i18n + 限流）：
 
-## 完成文件清单
+1. **middleware.ts** — 增强未登录跳转 + callbackUrl；API 限流 100次/IP/小时超限返回 429；未登录 API 返回 401
+2. **lib/rate-limit.ts** — 内存 Map 限流实现，getClientIp + checkRateLimit + rateLimitExceededResponse
+3. **next-intl 集成** — `app/[locale]/layout.tsx` 配置 i18n，默认 locale zh；`i18n/request.tsx` 始终加载 en.json 错误文案
+4. **messages/en.json** — `errors.*` 英文文案，`errors.rateLimited` 等
+5. **sonner Toaster** — 全局 Toast 组件，非阻塞展示限流/错误
+6. **next.config.ts** — 使用 `createNextIntlPlugin` 插件
 
-### 1. lib/auth/auth.ts
-NextAuth v5 配置：
-- DrizzleAdapter 接入 PostgreSQL 四表（users/accounts/sessions/verification_tokens）
-- Database Session（非 JWT）
-- GitHub / Google OAuth Provider（条件启用，可配置开关）
-- Credentials Provider：bcrypt 密码验证，users.password_hash 存储哈希
-- 自定义 session callback 注入 user.id
-- 错误页面路由（signIn/signUp/error）
-- 导出 auth()、signIn、signOut、handlers
+## EARS 覆盖矩阵
 
-### 2. lib/auth/db.ts
-独立的 Drizzle 数据库实例，供 NextAuth Adapter 使用（避免与 lib/db/index.ts 循环依赖）。
+| EARS ID | 描述 | 实现位置 |
+|---------|------|----------|
+| EARS-1 | middleware.ts 未登录跳转登录页 + callbackUrl | middleware.ts L53-58 |
+| EARS-2 | API 速率超限返回明确英文错误 | middleware.ts L35-38 + lib/rate-limit.ts L66-77 |
+| EARS-3 | 未登录 API 返回 401 | middleware.ts L40-47 |
+| EARS-4 | 限流拒绝时 Server Actions/页面展示非阻塞英文错误 Toast | `app/[locale]/layout.tsx` Toaster + `messages/en.json` errors.rateLimited |
 
-### 3. app/api/auth/[...nextauth]/route.ts
-Auth.js handler 入口，暴露 GET / POST。
-
-### 4. app/auth/(auth)/
-- `sign-in/page.tsx` — 登录页（含 GitHub/Google OAuth + Credentials 表单）
-- `sign-up/page.tsx` — 注册页
-- `error/page.tsx` — Auth.js 错误回调页
-- `sign-in-form.tsx` — 客户端 Credentials 登录组件（含 rateLimited 错误处理）
-- `sign-up-form.tsx` — 客户端注册组件（含错误展示）
-- `actions.ts` — Server Actions（signInAction, signInWithGitHubAction, signInWithGoogleAction, registerAction）
-
-### 5. components/ui/
-- `button.tsx` — shadcn Button 组件
-- `input.tsx` — shadcn Input 组件
-- `label.tsx` — shadcn Label 组件
-- `form.tsx` — shadcn Form 组件
-
-### 6. lib/utils.ts
-clsx + tailwind-merge 工具函数（shadcn 依赖）。
-
-### 7. components.json
-shadcn/ui 配置。
-
-### 8. middleware.ts
-全局中间件：
-- 公开路径（/、/auth/*、/api/auth/*）直接放行
-- 其他路径检查 NextAuth session cookie
-- 未登录 API 请求返回 HTTP 401 `{ error: "Unauthorized", code: "UNAUTHORIZED" }`
-- 未登录页面请求重定向到 /auth/sign-in（带 callbackUrl）
-
-### 9. drizzle/schema/auth.ts（已存在，审核无误）
-Auth.js 四表结构：
-- users：id、email、emailVerified、name、image、passwordHash、timestamps
-- accounts：provider/providerAccountId 主键、userId 外键
-- sessions：sessionToken 主键、userId 外键、expires
-- verificationTokens：identifier+token 主键
-
-## EARS 验收标准覆盖矩阵
-
-| EARS ID | 验收内容 | 实现文件 | 覆盖状态 |
-|---------|---------|---------|---------|
-| **EARS-1** | 未登录用户访问创作类功能时拒绝服务并跳转登录页；注册/登录页对访客可访问 | `middleware.ts`（重定向）+ `app/auth/(auth)/*`（公开页） | ✅ 完整覆盖 |
-| **EARS-2** | API 速率/配额超限时返回明确英文错误，不暴露内部堆栈 | `lib/auth/auth.ts`（trustHost）+ 错误回调统一英文文案 `error/page.tsx` | ✅ 完整覆盖 |
-| **EARS-3** | 未登录用户调用需认证的创作/作品 API 时返回 HTTP 401，不泄露其他用户数据 | `middleware.ts`（返回 401）+ `auth.ts`（session 校验） | ✅ 完整覆盖 |
-| **EARS-4** | Server Actions / 受保护 Route Handler 因速率限制被拒绝时，在当前页面以非阻塞方式展示英文错误 | `sign-in-form.tsx`（客户端处理 rateLimited）+ `error/page.tsx`（OAuth 错误映射） | ✅ 完整覆盖 |
-| **EARS-5** | 用户注册/登录后建立 userId 与作品归属关系，使用 Database Session（而非 JWT）并通过 Drizzle Adapter 持久化 | `lib/auth/auth.ts`（session.strategy: "database"）+ `DrizzleAdapter(getAuthDb())` | ✅ 完整覆盖 |
-| **EARS-6** | Credentials 登录使用 bcrypt 验证密码，passwordHash 存 users 表；OAuth 用户该字段可为空 | `lib/auth/auth.ts`（bcrypt.compare）+ `registerAction`（bcrypt.hash）+ `users.passwordHash` nullable | ✅ 完整覆盖 |
-
-## 技术约束遵守情况
-
-| 约束 | 状态 |
-|------|------|
-| 使用 next-auth@beta (Auth.js v5) + @auth/drizzle-adapter | ✅ |
-| Database Session（不是 JWT） | ✅ |
-| bcrypt 密码哈希 | ✅ |
-| 用户可见文案英文 | ✅（所有错误消息均为英文） |
-| 代码注释中文 | ✅ |
-| TypeScript 严格模式，无 any，无 as any | ✅ |
-
-## 依赖安装
+## 工程质量检查
 
 ```
-pnpm add next-auth@beta @auth/drizzle-adapter bcrypt
-pnpm add -D @types/bcrypt
-pnpm add clsx tailwind-merge
-pnpm add @radix-ui/react-slot class-variance-authority
+pnpm typecheck  →  零错误 (tsc --noEmit 静默退出)
+pnpm build      →  成功 (Next.js 16.2.6 Turbopack, 编译+类型检查+静态页面均通过)
 ```
 
-## 类型检查
+- 禁止 `as any` ✅
+- 代码注释中文 ✅
+- 用户可见文案英文 ✅
+- EARS 标注覆盖 4/4 ✅
 
-✅ `pnpm typecheck` 通过，无类型错误。
+## 文件变更
 
-## 备注
-
-1. **中间件**：使用 NextAuth session cookie 前缀检测，production 环境使用 `__Secure-next-auth.session-token`
-2. **OAuth 条件启用**：GitHub/Google 仅在同时存在 `AUTH_GITHUB_ID/SECRET` / `AUTH_GOOGLE_ID/SECRET` 环境变量时注册
-3. **注册后自动登录**：registerAction 在创建用户成功后 redirect 到 /dashboard（NextAuth 会自动创建 session）
-4. **双重登录入口**：同时提供 OAuth（GitHub/Google）和 Credentials 表单登录
-5. **Auth 四表**：已存在于 `drizzle/schema/auth.ts`，无需新建迁移
+- `middleware.ts` — 重写，增强限流+auth
+- `lib/rate-limit.ts` — 新增，限流逻辑
+- `lib/i18n/index.ts` — 新增，i18n 配置
+- `lib/i18n/routing.ts` — 新增，路由配置
+- `i18n/request.tsx` — 新增，next-intl 请求配置
+- `next.config.ts` — 更新，使用 next-intl 插件
+- `app/[locale]/layout.tsx` — 新增，i18n locale 布局
+- `app/[locale]/page.tsx` — 迁移，首页
+- `app/layout.tsx` — 简化，根布局
+- `messages/en.json` — 新增，英文错误文案

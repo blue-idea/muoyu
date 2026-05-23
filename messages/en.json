@@ -1,0 +1,12 @@
+{
+  "errors": {
+    "rateLimited": "Rate limit exceeded. Please try again later.",
+    "unauthorized": "Please sign in to continue.",
+    "projectNotFound": "Project not found. Please check your dashboard.",
+    "invalidProjectState": "Invalid project state. Please try again.",
+    "planningNotReady": "Planning is not ready yet. Please wait...",
+    "planningJobFailed": "Planning job failed. Please try again.",
+    "chapterOrderViolation": "Chapter order violation detected.",
+    "internalError": "Something went wrong. Please try again later."
+  }
+}
