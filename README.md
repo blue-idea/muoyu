@@ -23,7 +23,7 @@
 - **开发语言**：TypeScript
 - **UI 组件库**：React + shadcn/ui + Tailwind CSS
 - **身份认证**：NextAuth.js (Auth.js v5)
-- **数据库**：MySQL + Drizzle ORM
+- **数据库**：postgres+ Drizzle ORM
 - **持久化存储**：本地文件系统 (Local FS) / 预留 Cloudflare R2
 - **异步任务**：独立进程 Worker 消费任务队列
 - **国际化**：next-intl (中文 UI，英文错误信息)
@@ -48,7 +48,7 @@ moyu/
 ### 1. 环境准备
 
 - Node.js (>= 20)
-- MySQL (8.x)
+- postgres
 - pnpm
 
 ### 2. 安装依赖

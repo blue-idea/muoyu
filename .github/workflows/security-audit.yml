@@ -107,10 +107,14 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Install Gitleaks CLI
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/gitleaks/gitleaks/master/install.sh | sh -s -- -b /usr/local/bin
+          gitleaks version
+
       - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gitleaks git --redact --exit-code 1 --verbose
 
   security-gate:
     name: Security Gate
