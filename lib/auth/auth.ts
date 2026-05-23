@@ -93,7 +93,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async session({ session, user }) {
       if (user && session.user) {
-        session.user.id = user.id;
+        // user is cast to our augmented User type which includes id
+        session.user.id = (user as { id: string }).id;
       }
       return session;
     },
