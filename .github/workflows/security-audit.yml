@@ -119,7 +119,7 @@ jobs:
 
       - name: Run Gitleaks
         run: |
-          gitleaks git --source . --redact --exit-code 1 --verbose
+          gitleaks git . --redact --exit-code 1 --verbose
 
   security-gate:
     name: Security Gate
