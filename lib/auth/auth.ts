@@ -93,8 +93,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async session({ session, user }) {
       if (user && session.user) {
-        // user is cast to our augmented User type which includes id
-        session.user.id = (user as { id: string }).id;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        session.user.id = (user as unknown as { id: string }).id;
       }
       return session;
     },
