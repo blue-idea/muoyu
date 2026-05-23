@@ -1,50 +1,63 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { auth } from "@/lib/auth/auth";
+import { getClientIp, checkRateLimit, rateLimitExceededResponse } from "@/lib/rate-limit";
 
 /**
- * 中间件：保护需要登录的路由。
+ * 中间件：Auth 校验 + i18n + IP 限流
  *
- * EARS-1: 未登录用户访问创作类功能时跳转登录页，且不得创建 userId 或 R2 作品对象前缀。
- * EARS-3: 未登录用户调用需认证的创作或作品类 API 时返回 HTTP 401。
- *
- * 公开路由（无需登录）：
- *   /                    — 首页
- *   /auth/*              — 登录/注册/错误
- *   /api/auth/*          — NextAuth API
- *   /marketing           — 营销页（可选）
+ * EARS-1: 未登录用户访问创作类功能时跳转登录页 + callbackUrl
+ * EARS-2: API 速率超限返回明确英文错误
+ * EARS-3: 未登录用户调用需认证的 API 时返回 HTTP 401
+ * EARS-4: 限流拒绝时展示非阻塞英文错误（通过 errorKey 映射）
  */
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 公开路径：直接放行
-  if (
+  // ========== 限流检查（/api/*） ==========
+  if (pathname.startsWith("/api/")) {
+    const ip = getClientIp(request);
+    const { allowed, resetAt } = checkRateLimit(ip);
+
+    if (!allowed) {
+      return rateLimitExceededResponse(resetAt);
+    }
+  }
+
+  // ========== 公开路径放行 ==========
+  const isPublicPath =
     pathname.startsWith("/auth/") ||
     pathname.startsWith("/api/auth/") ||
     pathname === "/" ||
     pathname.startsWith("/_next") ||
-    pathname.startsWith("/favicon")
-  ) {
+    pathname.startsWith("/favicon") ||
+    pathname.match(/^\/[a-z]{2}\/auth\//);
+
+  if (isPublicPath) {
+    // 对非 locale 路径的首页应用默认 locale
+    if (pathname === "/") {
+      const locale = request.cookies.get("NEXT_LOCALE")?.value ?? "zh";
+      return NextResponse.redirect(new URL(`/${locale}`, request.url));
+    }
     return NextResponse.next();
   }
 
-  // 检查 session
-  // 注意：这里使用简单的 cookie 检查，生产环境应调用 auth() 获取真实 session
-  // 由于 NextAuth 的 session cookie 名称取决于配置，使用前缀匹配
-  const sessionCookie =
-    request.cookies.get("next-auth.session-token") ??
-    request.cookies.get("__Secure-next-auth.session-token");
+  // ========== Session 检查 ==========
+  const session = await auth();
 
-  if (!sessionCookie) {
-    // 未登录：重定向到登录页（API 路由返回 401）
+  if (!session?.user) {
+    // 未登录：API 路由返回 401，页面路由重定向
     if (pathname.startsWith("/api/")) {
       return NextResponse.json(
-        { error: "Unauthorized", code: "UNAUTHORIZED" },
+        { error: { code: "UNAUTHORIZED", message: "Please sign in to continue." } },
         { status: 401 }
       );
     }
 
+    // 页面重定向到登录页，带 callbackUrl
     const callbackUrl = encodeURIComponent(request.url);
-    const loginUrl = new URL("/auth/sign-in", request.url);
+    const locale = request.cookies.get("NEXT_LOCALE")?.value ?? "zh";
+    const loginUrl = new URL(`/${locale}/auth/sign-in`, request.url);
     loginUrl.searchParams.set("callbackUrl", callbackUrl);
     return NextResponse.redirect(loginUrl.toString());
   }
@@ -54,12 +67,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * 匹配所有路径除了：
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
     "/((?!_next/static|_next/image|favicon.ico).*)",
   ],
 };

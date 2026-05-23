@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Metadata } from "next";
 import { signIn } from "@/lib/auth/auth";
 import { Button } from "@/components/ui/button";
@@ -64,9 +65,9 @@ export default async function SignInPage() {
 
         <p className="text-center text-sm text-muted-foreground">
           Don&apos;t have an account?{" "}
-          <a href="/auth/sign-up" className="underline underline-offset-4 hover:text-primary">
+          <Link href="/auth/sign-up" className="underline underline-offset-4 hover:text-primary">
             Sign up
-          </a>
+          </Link>
         </p>
       </div>
     </div>

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Metadata } from "next";
 import { SignUpForm } from "../sign-up-form";
 
@@ -25,9 +26,9 @@ export default function SignUpPage() {
 
         <p className="text-center text-sm text-muted-foreground">
           Already have an account?{" "}
-          <a href="/auth/sign-in" className="underline underline-offset-4 hover:text-primary">
+          <Link href="/auth/sign-in" className="underline underline-offset-4 hover:text-primary">
             Sign in
-          </a>
+          </Link>
         </p>
       </div>
     </div>
