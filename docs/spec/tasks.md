@@ -135,10 +135,10 @@
   - [x] `planning_ready=true`
   - _需求：REQ-008、REQ-007_
 
-- [ ] **TASK-012. 规划进度轮询 API**
+- [x] **TASK-012. 规划进度轮询 API**（完成于 2026-05-23，PR #8 已合并）
 
-  - [ ] `GET /api/projects/[projectId]/planning-jobs/[jobId]`
-  - [ ] `app/.../projects/[projectId]/planning`：规划生成中轮询 UI；失败重试；`planning_ready` 后跳转 L4（REQ-008-AC-007/008）
+  - [x] `GET /api/projects/[projectId]/planning-jobs/[jobId]`
+  - [x] `app/.../projects/[projectId]/planning`：规划生成中轮询 UI；失败重试；`planning_ready` 后跳转 L4（REQ-008-AC-007/008）
   - _需求：REQ-008、REQ-002_
 
 - [ ] **TASK-013. L4 规划确认与模式选择**
