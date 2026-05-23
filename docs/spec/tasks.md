@@ -128,11 +128,11 @@
 
 ## 阶段 5：Phase 2 规划（异步）
 
-- [ ] **TASK-011. 规划任务与 Worker**
+- [x] **TASK-011. 规划任务与 Worker**（完成于 2026-05-23，PR #7 已合并）
 
-  - [ ] `planning-service.ts` → `planning_jobs`
-  - [ ] Worker 消费规划任务：生成 00/01/02 + `content_files` 索引
-  - [ ] `planning_ready=true`
+  - [x] `planning-service.ts` → `planning_jobs`
+  - [x] Worker 消费规划任务：生成 00/01/02 + `content_files` 索引
+  - [x] `planning_ready=true`
   - _需求：REQ-008、REQ-007_
 
 - [ ] **TASK-012. 规划进度轮询 API**
