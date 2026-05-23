@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { auth } from "@/lib/auth/auth";
 import { getClientIp, checkRateLimit, rateLimitExceededResponse } from "@/lib/rate-limit";
 
 /**
@@ -43,9 +42,11 @@ export async function middleware(request: NextRequest) {
   }
 
   // ========== Session 检查 ==========
-  const session = await auth();
+  const sessionToken =
+    request.cookies.get("next-auth.session-token")?.value ??
+    request.cookies.get("__Secure-next-auth.session-token")?.value;
 
-  if (!session?.user) {
+  if (!sessionToken) {
     // 未登录：API 路由返回 401，页面路由重定向
     if (pathname.startsWith("/api/")) {
       return NextResponse.json(

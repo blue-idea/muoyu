@@ -1,48 +1,58 @@
-import NextAuth from "next-auth";
+import { redirect } from "next/navigation";
+import NextAuth, { getServerSession, type NextAuthOptions } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import GitHub from "next-auth/providers/github";
 import Google from "next-auth/providers/google";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import bcrypt from "bcrypt";
-
-import { getAuthDb } from "./db";
-import { users } from "@/drizzle/schema/auth";
 import { eq } from "drizzle-orm";
+
 import { readEnvString } from "@/config/env";
+import { users } from "@/drizzle/schema/auth";
+import { getAuthDb } from "./db";
 
-const authSecret = readEnvString("AUTH_SECRET", "");
+type AuthProvider = "credentials" | "github" | "google";
 
-/**
- * 延迟初始化 DrizzleAdapter，避免 build 时因缺少 DATABASE_URL 而失败。
- * 通过 getter 函数动态获取，build 阶段不会触发。
- */
-let _adapter: ReturnType<typeof DrizzleAdapter> | null = null;
+type SignInOptions = {
+  redirectTo?: string;
+  email?: string;
+  password?: string;
+};
 
-function getAdapter() {
-  if (!_adapter) {
-    _adapter = DrizzleAdapter(getAuthDb());
+type SignOutOptions = {
+  redirectTo?: string;
+};
+
+function createAdapter() {
+  const databaseUrl = readEnvString("DATABASE_URL", "");
+  if (databaseUrl.length === 0) {
+    return undefined;
   }
-  return _adapter;
+  return DrizzleAdapter(getAuthDb());
 }
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: {
-    // 使用 adapter getter 而非直接传 DrizzleAdapter 实例
-    // 内部 NextAuth 会在需要时访问这些属性
-    __useFactory() {
-      return getAdapter();
-    },
-    // 以下属性在需要时动态获取
-    getAdapter() {
-      return Promise.resolve(getAdapter());
-    },
-  } as unknown as ReturnType<typeof DrizzleAdapter>,
+function readRedirectTo(redirectTo: string | undefined, fallback: string): string {
+  if (!redirectTo || redirectTo.trim().length === 0) {
+    return fallback;
+  }
+  return redirectTo;
+}
+
+function buildOAuthSignInUrl(provider: "github" | "google", callbackUrl: string): string {
+  const query = new URLSearchParams({ callbackUrl });
+  return `/api/auth/signin/${provider}?${query.toString()}`;
+}
+
+const adapter = createAdapter();
+const authSecret = readEnvString("AUTH_SECRET", "");
+
+export const authOptions: NextAuthOptions = {
+  adapter,
   session: {
-    strategy: "database",
+    strategy: adapter ? "database" : "jwt",
   },
   secret: authSecret,
   providers: [
-    // EARS-6: 覆盖 — bcrypt 验证密码，存 users.password_hash
     Credentials({
       name: "credentials",
       credentials: {
@@ -50,12 +60,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
+        const email = credentials?.email?.trim().toLowerCase() ?? "";
+        const password = credentials?.password ?? "";
+
+        if (email.length === 0 || password.length === 0) {
           return null;
         }
-
-        const email = credentials.email as string;
-        const password = credentials.password as string;
 
         const db = getAuthDb();
         const [user] = await db
@@ -92,11 +102,36 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   callbacks: {
     async session({ session, user }) {
-      if (user && session.user) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        session.user.id = (user as unknown as { id: string }).id;
+      if (session.user && user?.id) {
+        session.user.id = user.id;
       }
       return session;
     },
   },
-});
+};
+
+const nextAuthHandler = NextAuth(authOptions);
+
+export const handlers = {
+  GET: nextAuthHandler,
+  POST: nextAuthHandler,
+};
+
+export async function auth() {
+  return getServerSession(authOptions);
+}
+
+export async function signIn(provider: AuthProvider, options: SignInOptions = {}) {
+  if (provider === "credentials") {
+    throw new Error("Credentials sign-in should use /api/auth/callback/credentials.");
+  }
+
+  const callbackUrl = readRedirectTo(options.redirectTo, "/dashboard");
+  redirect(buildOAuthSignInUrl(provider, callbackUrl));
+}
+
+export async function signOut(options: SignOutOptions = {}) {
+  const callbackUrl = readRedirectTo(options.redirectTo, "/");
+  const query = new URLSearchParams({ callbackUrl });
+  redirect(`/api/auth/signout?${query.toString()}`);
+}
