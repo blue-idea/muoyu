@@ -109,10 +109,10 @@
 
 ## 阶段 4：向导与快捷开写
 
-- [ ] **TASK-009. Phase 1 向导 L1–L3**
+- [x] **TASK-009. Phase 1 向导 L1–L3**（完成于 2026-05-23，PR #5 已合并）
 
-  - [ ] `wizardStore.ts`、`wizard.saveLayer1/2/3`
-  - [ ] 分步 UI（一屏一事、🎲 随机、L3 LLM 标题）
+  - [x] `wizardStore.ts`、`wizard.saveLayer1/2/3`
+  - [x] 分步 UI（一屏一事、🎲 随机、L3 LLM 标题）
   - _需求：REQ-004、REQ-005、REQ-006_
 
 - [ ] **TASK-010. Phase 0 快捷开写**
