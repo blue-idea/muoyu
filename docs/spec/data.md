@@ -4,10 +4,10 @@
 
 | 项 | 内容 |
 |----|------|
-| 版本 | **1.0.1** |
+| 版本 | **1.3.0** |
 | 状态 | **已定稿** |
-| 定稿日期 | 2026-05-22 |
-| 上游 | [requirements.md](./requirements.md) v1.0.0、[design.md](./design.md) v1.0.1 |
+| 定稿日期 | 2026-05-23 |
+| 上游 | [requirements.md](./requirements.md) v1.3.0、[design.md](./design.md) v1.3.0 |
 | 下游 | [api.md](./api.md)（接口契约）、`drizzle/schema/*`（实现） |
 | ORM | Drizzle ORM + PostgreSQL 16.x |
 | 迁移目录 | `drizzle/migrations/` |
@@ -20,9 +20,9 @@
 
 | 原则 | 说明 |
 |------|------|
-| 文件真源 | 人物/大纲/章节正文存 `StorageDriver`（一期 local，预留 R2）；DB 仅存路径与元数据 |
+| R2 为真源 | 人物/大纲/章节 MD、写作计划 JSON、知识库全文、导出文件存 **Cloudflare R2**；DB 仅存 **R2 对象键**与元数据 |
 | 用户隔离 | 所有业务表含 `user_id`；查询必须带 `session.user.id`（等效 RLS，见 design.md §6.2） |
-| 无正文 BLOB | 禁止正文 `TEXT` 列存章节；知识库解析结果存对象存储或独立文本文件路径 |
+| 无正文 BLOB | 禁止正文 `TEXT` 列存章节；知识库解析全文存 R2（`text_storage_key`） |
 | 枚举集中 | 字符串枚举在 `drizzle/schema/enums.ts` 与本文保持一致 |
 | 时间戳 | 统一 `created_at`、`updated_at`（UTC，`TIMESTAMPTZ`）；软删可选 `deleted_at` |
 | ID | 业务主键 `UUID`（建议 UUID v7/v4）；Auth 表可与 NextAuth 约定一致 |
@@ -41,6 +41,7 @@ erDiagram
     users ||--o{ knowledge_documents : owns
 
     projects ||--o{ content_files : indexes
+    projects ||--o{ planning_jobs : runs
     projects ||--o{ generation_jobs : runs
     projects ||--o{ project_knowledge_bindings : binds
     projects }o--o| user_llm_configs : overrides
@@ -129,11 +130,10 @@ erDiagram
 
 ### 3.5 写作模式 `writing_mode`（REQ-009）
 
-| 值 | 一期 | 说明 |
-|----|------|------|
-| `serial` | ✅ | 主循环串行 |
-| `subagent_parallel` | P2 | 子 Agent 并行批次 |
-| `agent_teams` | P2 | Agent Teams |
+| 值 | 说明 |
+|----|------|
+| `serial` | 按章顺序完成 |
+| `parallel` | 分批并行，大纲保连贯（仅 `creationPace=auto`） |
 
 ### 3.6 后台任务状态 `job_status`
 
@@ -145,7 +145,7 @@ erDiagram
 | `failed` | 失败（可重试） |
 | `cancelled` | 用户取消 |
 
-### 3.7 知识库文档状态 `knowledge_doc_status`（四期，表可先建）
+### 3.7 知识库文档状态 `knowledge_doc_status`
 
 | 值 | 说明 |
 |----|------|
@@ -155,23 +155,24 @@ erDiagram
 
 ---
 
-## 4. 表清单（按分期）
+## 4. 表清单
 
-| 表名 | 分期 | 需求 |
-|------|------|------|
-| `users` | 一期 | Auth Credentials |
-| `accounts` | 一期 | OAuth（D2） |
-| `sessions` | 一期 | Database Session |
-| `verification_tokens` | 一期 | 邮箱验证（可选） |
-| `user_preferences` | 一期 | REQ-001 |
-| `projects` | 一期 | REQ-002、017 |
-| `content_files` | 一期 | REQ-007 |
-| `generation_jobs` | 一期 | REQ-010、D1 |
-| `user_llm_configs` | 三期 | REQ-014（表结构一期可建空） |
-| `knowledge_documents` | 四期 | REQ-015 |
-| `knowledge_chunks` | 四期 | REQ-015 RAG |
-| `project_knowledge_bindings` | 四期 | REQ-015 |
-| `export_records` | 三期 | REQ-012 P2 导出历史 |
+| 表名 | 需求 |
+|------|------|
+| `users` | Auth Credentials |
+| `accounts` | OAuth（D2） |
+| `sessions` | Database Session |
+| `verification_tokens` | 邮箱验证（可选） |
+| `user_preferences` | REQ-001 |
+| `projects` | REQ-002、017 |
+| `content_files` | REQ-007 |
+| `planning_jobs` | REQ-008（Phase 2 异步规划） |
+| `generation_jobs` | REQ-010、D1 |
+| `user_llm_configs` | REQ-014 |
+| `knowledge_documents` | REQ-015 |
+| `knowledge_chunks` | REQ-015 RAG |
+| `project_knowledge_bindings` | REQ-015 |
+| `export_records` | REQ-012 导出历史 |
 
 ---
 
@@ -238,16 +239,17 @@ erDiagram
 | `title` | `VARCHAR(200)` | NOT NULL | 小说标题（L3 `novelName`） |
 | `slug` | `VARCHAR(80)` | NOT NULL | URL/目录用；`[a-z0-9-]+` |
 | `status` | `ENUM(project_status)` | NOT NULL, DEFAULT `draft` | 五态 |
-| `storage_prefix` | `VARCHAR(512)` | NOT NULL | 存储键前缀：`{userId}/{projectId}-{slug}/` |
+| `storage_prefix` | `VARCHAR(512)` | NOT NULL | **R2 对象键前缀**：`{userId}/{projectId}-{slug}/` |
 | `creation_config` | `JSON` | NULL | 向导 L0–L3 采集（见 §8.2） |
 | `planning_ready` | `BOOLEAN` | NOT NULL, DEFAULT false | 规划产物已生成、待 L4（REQ-002-AC-005） |
-| `llm_config_id` | `UUID` | NULL, FK → user_llm_configs | 作品级模型覆盖（三期） |
+| `llm_config_id` | `UUID` | NULL, FK → user_llm_configs | 作品级模型覆盖 |
 | `writing_plan_etag` | `VARCHAR(64)` | NULL | `02-写作计划.json` 内容哈希，可选缓存失效 |
 | `chapter_completed_count` | `INTEGER` | NOT NULL, DEFAULT 0 | 冗余统计，由同步任务更新 |
 | `total_chapters` | `INTEGER` | NULL | 来自写作计划 |
 | `created_at` | `TIMESTAMPTZ` | NOT NULL | |
 | `updated_at` | `TIMESTAMPTZ` | NOT NULL | |
-| `deleted_at` | `TIMESTAMPTZ` | NULL | 软删（可选） |
+| `deleted_at` | `TIMESTAMPTZ` | NULL | 软删 |
+| `storage_delete_pending` | `BOOLEAN` | NOT NULL, DEFAULT false | 存储删除补偿标记（Q6-A） |
 
 **索引：**
 
@@ -259,18 +261,22 @@ erDiagram
 
 **`storage_prefix` 示例：** `550e8400-e29b-41d4-a716-446655440000/7c9e6679-7425-40de-944b-e07fc1f90ae7-starfall/`
 
+**R2 对象键：** **不**包含 bucket 名；Bucket 由 `R2_BUCKET` 配置。完整键 = `storage_prefix` + `relative_path`。
+
+**`content_files` 与 R2 映射：** 每行 `relative_path` 为对象键后缀；完整 R2 键 = `projects.storage_prefix` + `content_files.relative_path`。
+
 ---
 
 ### 5.5 `content_files`
 
-作品目录内文件的**索引**（非正文）。
+作品 R2 对象的**索引**（非正文；正文在 R2）。
 
 | 列名 | 类型 | 约束 | 说明 |
 |------|------|------|------|
 | `id` | `UUID` | PK | |
 | `project_id` | `UUID` | NOT NULL, FK → projects | |
 | `file_type` | `ENUM(content_file_type)` | NOT NULL | |
-| `relative_path` | `VARCHAR(255)` | NOT NULL | 如 `第01章-星落.md` |
+| `relative_path` | `VARCHAR(255)` | NOT NULL | R2 对象键后缀，如 `第01章-星落.md` |
 | `chapter_number` | `INTEGER` | NULL | 仅 `chapter` 类型 |
 | `title` | `VARCHAR(200)` | NULL | 章节标题缓存 |
 | `word_count` | `INTEGER` | NULL | 上次统计字数 |
@@ -295,7 +301,32 @@ erDiagram
 
 ---
 
-### 5.6 `generation_jobs`
+### 5.6 `planning_jobs`
+
+Phase 2 规划生成异步任务（澄清 Q4）。
+
+| 列名 | 类型 | 约束 | 说明 |
+|------|------|------|------|
+| `id` | `UUID` | PK | |
+| `project_id` | `UUID` | NOT NULL, FK → projects | |
+| `user_id` | `UUID` | NOT NULL, FK → users | 冗余归属校验 |
+| `status` | `ENUM(job_status)` | NOT NULL, DEFAULT `pending` | |
+| `locked_at` | `TIMESTAMPTZ` | NULL | Worker 互斥锁 |
+| `locked_by` | `VARCHAR(64)` | NULL | Worker 实例 ID |
+| `attempt_count` | `INTEGER` | NOT NULL, DEFAULT 0 | |
+| `last_error` | `VARCHAR(1024)` | NULL | 英文摘要 |
+| `started_at` | `TIMESTAMPTZ` | NULL | |
+| `completed_at` | `TIMESTAMPTZ` | NULL | |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL | |
+| `updated_at` | `TIMESTAMPTZ` | NOT NULL | |
+
+**索引：** `idx_planning_jobs_project_status (project_id, status)`；`idx_planning_jobs_pending (status, created_at)`
+
+**约束：** 同一 `project_id` 在 `pending`/`running` 下至多一条 Job。
+
+---
+
+### 5.7 `generation_jobs`
 
 自动创作（`creationPace: auto`）后台任务；手动模式**不**创建此表记录。
 
@@ -326,7 +357,7 @@ erDiagram
 
 ---
 
-### 5.7 `user_llm_configs`（三期启用）
+### 5.8 `user_llm_configs`
 
 | 列名 | 类型 | 约束 | 说明 |
 |------|------|------|------|
@@ -345,7 +376,7 @@ erDiagram
 
 ---
 
-### 5.8 知识库（四期，`REQ-015`）
+### 5.9 知识库（`REQ-015`）
 
 #### `knowledge_documents`
 
@@ -357,7 +388,7 @@ erDiagram
 | `source_type` | `ENUM('upload','url')` | |
 | `source_meta` | `JSON` | 文件名、URL 等 |
 | `status` | `ENUM(knowledge_doc_status)` | |
-| `text_storage_key` | `VARCHAR(512)` | 解析后全文存 StorageDriver |
+| `text_storage_key` | `VARCHAR(512)` | 解析后全文对象键（`{userId}/knowledge/{docId}.txt`） |
 | `failure_reason` | `VARCHAR(512)` | 英文 |
 | `created_at` / `updated_at` | `TIMESTAMPTZ` | |
 
@@ -369,7 +400,20 @@ erDiagram
 | `document_id` | `UUID` FK | |
 | `chunk_index` | `INT` | |
 | `content` | `TEXT` | 分块文本（短片段，非全书） |
-| `embedding` | `JSON` | 向量可选 P2 |
+| `embedding` | `JSON` | 向量（可选，pgvector 扩展） |
+
+#### `export_records`
+
+| 列名 | 类型 | 说明 |
+|------|------|------|
+| `id` | `UUID` PK | |
+| `project_id` | `UUID` FK | |
+| `user_id` | `UUID` FK | |
+| `format` | `ENUM('md','txt','pdf','epub')` | |
+| `metadata` | `JSON` | 书名、作者、简介等 |
+| `storage_key` | `VARCHAR(512)` | 导出文件在 R2 中的完整对象键 |
+| `file_size` | `INTEGER` | 字节 |
+| `created_at` | `TIMESTAMPTZ` | |
 
 #### `project_knowledge_bindings`
 
@@ -401,7 +445,7 @@ erDiagram
   "createdAt": "ISO-8601",
   "updatedAt": "ISO-8601",
   "status": "planning | in_progress | completed",
-  "writingMode": "serial | subagent_parallel | agent_teams",
+  "writingMode": "serial | parallel",
   "creationPace": "auto | manual",
   "chapters": [
     {
@@ -424,7 +468,7 @@ erDiagram
 | `wordCountPass` | `false` 表示 M8 保存时字数越界（REQ-013） |
 | `filePath` | 与 `content_files.relative_path`、磁盘文件名一致 |
 
-**一期 `writingMode` 有效值：** 仅 `serial`；并行模式写入时拒绝或降级并记录日志。
+**`writingMode` 有效值：** `serial`（默认）、`parallel`（仅 `creationPace=auto`）。
 
 ### 6.2 `projects.status` 与 JSON 的映射
 
@@ -439,14 +483,16 @@ erDiagram
 
 ---
 
-## 7. 文件真源与 DB 同步策略
+## 7. R2 真源与 DB 同步策略
 
 ### 7.1 写入顺序（REQ-007）
+
+所有 MD/JSON/二进制正文**仅**写入 Cloudflare R2；DB 记录 R2 对象键索引。
 
 ```mermaid
 sequenceDiagram
     participant SVC as 领域服务
-    participant ST as StorageDriver
+    participant ST as R2StorageDriver
     participant DB as PostgreSQL
 
     SVC->>ST: writeText(relativePath, content)
@@ -462,7 +508,7 @@ sequenceDiagram
 | 场景 | 数据源 |
 |------|--------|
 | 章节列表 API | `content_files` + `02-写作计划.json` 章节状态合并 |
-| 章节正文预览/阅读 | `StorageDriver.readText` |
+| 章节正文预览/阅读 | `R2StorageDriver.readText`（键 = `storage_prefix` + `relative_path`） |
 | 创作进度（自动） | `generation_jobs` + JSON `chapters[].status` |
 | 首页续写卡片 | `projects.status` + JSON 统计 `completed/total` |
 
@@ -474,13 +520,13 @@ sequenceDiagram
 | 单章写完 | 章节 MD + `01-大纲.md` 摘要区 + JSON 章项 | `content_files` chapter 行；JSON 全量写回 |
 | M8 编辑保存 | 章节 MD + JSON 章项 | `content_files.word_count`；`wordCountPass` |
 | Phase 4 退回重写 | JSON 章 `failed` | `generation_jobs` 可选新建 |
-| 删除作品 | `deletePrefix(storage_prefix)` | 级联删 `content_files`、`generation_jobs`、bindings |
+| 删除作品 | 软删 DB + `storage_delete_pending` → Worker `deletePrefix` | 补偿重试直至成功 |
 
 ### 7.4 一致性校验（Worker / 定时）
 
 1. 读取 `02-写作计划.json` 解析章节列表  
 2. 对每个 `filePath`：`exists` + 统计 `word_count`  
-3. 与 `content_files` 对齐；偏差时以**文件为准**回写 DB  
+3. 与 `content_files` 对齐；偏差时以 **R2 对象**为准回写 DB  
 4. 更新 `projects.chapter_completed_count`、`writing_plan_etag`
 
 ### 7.5 损坏恢复
@@ -489,7 +535,7 @@ sequenceDiagram
 |------|------|
 | JSON 解析失败 | UI 报错 `errors.writingPlanCorrupted`；尝试从 `01-大纲.md` + 章节文件重建章节列表 |
 | 章节文件缺失但 JSON 为 completed | 标为 `failed`，触发重写流程 |
-| DB 索引缺失但文件存在 | 扫描目录补建 `content_files` |
+| DB 索引缺失但 R2 对象存在 | `list(storage_prefix)` 扫描 R2 前缀补建 `content_files` |
 
 ---
 
@@ -539,10 +585,11 @@ drizzle/
 │   ├── auth.ts          # users, accounts, sessions, verification_tokens
 │   ├── projects.ts
 │   ├── content-files.ts
-│   ├── jobs.ts
+│   ├── jobs.ts          # planning_jobs + generation_jobs
 │   ├── preferences.ts
 │   ├── llm.ts
-│   └── knowledge.ts     # 四期
+│   ├── knowledge.ts
+│   └── exports.ts
 ├── index.ts             # 聚合 export
 └── migrations/
 ```
@@ -559,10 +606,8 @@ drizzle/
 
 ### 9.3 迁移策略
 
-1. 初始迁移：Auth 四表 + 一期业务表  
-2. 三期迁移：`user_llm_configs` 启用 + `projects.llm_config_id`  
-3. 四期迁移：知识库三表  
-4. 禁止在生产直接改表；一律 `drizzle-kit generate` + 审查
+1. **初始迁移：** Auth 四表 + 全量业务表（含 `planning_jobs`、知识库、`export_records`）
+2. **增量迁移：** 仅 schema 变更时 `drizzle-kit generate` + 审查
 
 ---
 
@@ -582,7 +627,9 @@ drizzle/
 | 版本 | 日期 | 说明 |
 |------|------|------|
 | 1.0.0 | 2026-05-20 | 初稿定稿；对齐 requirements v1.0.0、design v1.0.0 |
-| 1.0.1 | 2026-05-22 | 数据库方案切换至 PostgreSQL：类型体系、时间字段、文档示例与 Drizzle 约定同步更新 |
+| 1.0.1 | 2026-05-22 | 数据库方案切换至 PostgreSQL |
+| 1.2.0 | 2026-05-23 | R2 与 local 双驱动完整实现；对象键约定与 knowledge/export 路径 |
+| 1.3.0 | 2026-05-23 | **R2 唯一存储**；DB 字段明确为 R2 对象键；移除本地文件系统 |
 
 ---
 
