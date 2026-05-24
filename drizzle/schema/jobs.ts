@@ -67,3 +67,21 @@ export const generationJobs = pgTable(
     index("idx_jobs_pending").on(table.status, table.createdAt),
   ],
 );
+
+export const storageDeletePending = pgTable(
+  "storage_delete_pending",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    storageKey: varchar("storage_key", { length: 512 }).notNull(),
+    attemptCount: integer("attempt_count").default(0).notNull(),
+    lastError: varchar("last_error", { length: 1024 }),
+    nextRetryAt: timestamp("next_retry_at", { withTimezone: true, mode: "date" }),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true, mode: "date" }),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("idx_storage_delete_pending_retry").on(table.nextRetryAt, table.resolvedAt),
+  ],
+);
