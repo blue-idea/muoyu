@@ -106,6 +106,10 @@ export function decryptApiKey(encrypted: string): string {
   const encryptedText = parts[2];
 
   const decipher = createDecipheriv(ALGORITHM, key, iv);
+  // Enforce expected tag length before verification to prevent GCM short-tag attack
+  if (authTag.length !== AUTH_TAG_LENGTH) {
+    throw new Error(`Invalid auth tag length: expected ${AUTH_TAG_LENGTH}, got ${authTag.length}`);
+  }
   decipher.setAuthTag(authTag);
 
   let decrypted = decipher.update(encryptedText, "hex", "utf8");
