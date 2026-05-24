@@ -159,7 +159,7 @@
   - [ ] 单元测试 mock LLM + 临时目录
   - _需求：REQ-010、REQ-007、REQ-015_
 
-- [x] **TASK-015. 自动创作 Worker 与进度 API**（完成于 2026-05-24，PR #11 已合并，fix #16）
+- [ ] **TASK-015. 自动创作 Worker 与进度 API**
 
   - [ ] Worker 消费 `generation_jobs`；串行/并行模式
   - [ ] `GET .../generation-jobs/[jobId]` + `writeProgressStore`
