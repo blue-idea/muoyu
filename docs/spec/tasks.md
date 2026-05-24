@@ -152,18 +152,18 @@
 
 ## 阶段 6：Phase 3 创作
 
-- [ ] **TASK-014. 单章创作子流程**
+- [x] **TASK-014. 单章创作子流程**（完成于 2026-05-23，PR #10+15 已合并）
 
-  - [ ] `chapter-writer.ts`（含知识库 RAG 注入点）
-  - [ ] 字数 3000–5000、`MAX_RETRY=3`、`wordCountPass`
-  - [ ] 单元测试 mock LLM + 临时目录
+  - [x] `chapter-writer.ts`（含知识库 RAG 注入点）
+  - [x] 字数 3000–5000、`MAX_RETRY=3`、`wordCountPass`
+  - [x] 单元测试 mock LLM + 临时目录
   - _需求：REQ-010、REQ-007、REQ-015_
 
-- [ ] **TASK-015. 自动创作 Worker 与进度 API**
+- [x] **TASK-015. 自动创作 Worker 与进度 API**（完成于 2026-05-23，PR #11+16 已合并）
 
-  - [ ] Worker 消费 `generation_jobs`；串行/并行模式
-  - [ ] `GET .../generation-jobs/[jobId]` + `writeProgressStore`
-  - [ ] `app/.../write` L5：自动模式进度条 + 并行批次进度（若 `writingMode=parallel`）
+  - [x] Worker 消费 `generation_jobs`；串行/并行模式
+  - [x] `GET .../generation-jobs/[jobId]` + `writeProgressStore`
+  - [x] `app/.../write` L5：自动模式进度条 + 并行批次进度（若 `writingMode=parallel`）
   - _需求：REQ-010、REQ-009、REQ-018_
 
 - [x] **TASK-016. 手动创作模式**（完成于 2026-05-24，PR #20 待合并）
