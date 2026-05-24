@@ -252,7 +252,7 @@
 
 ## 阶段 12：指定章节重生
 
-- [ ] **TASK-025. 大纲/正文重生（M11）**
+- [x] **TASK-025. 大纲/正文重生（M11）**（完成于 2026-05-24，直接提交到 main）
 
   - [ ] `regenerate.chapterOutline` + diff 确认
   - [ ] `regenerate.chapterContent` + 覆盖确认
