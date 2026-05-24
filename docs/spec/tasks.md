@@ -264,7 +264,7 @@
 
 ## 阶段 13：横切与补偿
 
-- [ ] **TASK-026. 存储删除补偿 Job**
+- [x] **TASK-026. 存储删除补偿 Job**（完成于 2026-05-24，PR #26 已合并）
 
   - [ ] Worker 扫描 `storage_delete_pending` → R2 `deletePrefix` 重试
   - _需求：REQ-002、REQ-007_
