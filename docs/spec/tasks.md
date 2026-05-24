@@ -201,7 +201,7 @@
   - [ ] `app/.../edit`
   - _需求：REQ-013、REQ-007_
 
-- [x] **TASK-020. 一致性检查与 AI 润色**（完成于 2026-05-24，PR #21 待合并）
+- [x] **TASK-020. 一致性检查与 AI 润色**（完成于 2026-05-24，PR #21 已合并）
   - [x] `editor.runConsistencyCheck`（全书/单章）
   - [x] `editor.polishChapter` / `polishSelection` + diff + `acceptPolish`
   - _需求：REQ-013、REQ-010_
