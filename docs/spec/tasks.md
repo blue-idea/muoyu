@@ -166,11 +166,11 @@
   - [ ] `app/.../write` L5：自动模式进度条 + 并行批次进度（若 `writingMode=parallel`）
   - _需求：REQ-010、REQ-009、REQ-018_
 
-- [ ] **TASK-016. 手动创作模式**
+- [x] **TASK-016. 手动创作模式**（完成于 2026-05-24，PR #20 待合并）
 
-  - [ ] `writing.generateChapter` + 序章校验
-  - [ ] UI：仅当前章可「生成本章」
-  - [ ] E2E 跳章拒绝
+  - [x] `writing.generateChapter` + 序章校验
+  - [x] UI：仅当前章可「生成本章」
+  - [x] E2E 跳章拒绝
   - _需求：REQ-010、REQ-009_
 
 ---
