@@ -152,7 +152,7 @@
 
 ## 阶段 6：Phase 3 创作
 
-- [ ] **TASK-014. 单章创作子流程**
+- [x] **TASK-014. 单章创作子流程**（完成于 2026-05-24，PR #10 已合并，fix #15）
 
   - [ ] `chapter-writer.ts`（含知识库 RAG 注入点）
   - [ ] 字数 3000–5000、`MAX_RETRY=3`、`wordCountPass`
