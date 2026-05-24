@@ -241,7 +241,7 @@
   - [ ] `app/[locale]/(app)/knowledge`
   - _需求：REQ-015_
 
-- [ ] **TASK-024. RAG 注入与作品绑定**
+- [x] **TASK-024. RAG 注入与作品绑定**（完成于 2026-05-24，PR #25 已合并）
 
   - [ ] `knowledge.bindToProject` / `unbindFromProject`
   - [ ] Phase 2/3/润色前检索片段；冲突警告（L4）
