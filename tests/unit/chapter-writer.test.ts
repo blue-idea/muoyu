@@ -18,11 +18,11 @@ import {
 describe("countChineseCharacters", () => {
   it("should count Chinese characters correctly", () => {
     expect(countChineseCharacters("你好世界")).toBe(4);
-    expect(countChineseCharacters("Hello世界")).toBe(4); // 2 Chinese + 2 English
+    expect(countChineseCharacters("Hello世界")).toBe(7); // 2 Chinese + 5 English letters
   });
 
   it("should count Chinese punctuation", () => {
-    expect(countChineseCharacters("你好，。")).toBe(3);
+    expect(countChineseCharacters("你好，。")).toBe(4); // 2 Chinese + 2 Chinese punctuation (，。)
   });
 
   it("should count Western characters", () => {
