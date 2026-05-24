@@ -4,12 +4,13 @@
  * EARS: REQ-013
  */
 
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 
 describe("Editor Service", () => {
   describe("word count boundaries", () => {
-    it("should define valid range 3000-5000 chars", () => {
-      // Valid range boundary tests
+    it("should define valid range 3000-5000 words", () => {
+      // These constants are defined in lib/editor/editor-service.ts
+      // Valid range: 3000-5000 Chinese characters per chapter
       const MIN_WORDS = 3000;
       const MAX_WORDS = 5000;
 
