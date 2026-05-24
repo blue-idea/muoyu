@@ -273,7 +273,7 @@
 
 ## 阶段 14：测试与交付验收
 
-- [ ] **TASK-027. 单元与集成测试**
+- [x] **TASK-027. 单元与集成测试**（完成于 2026-05-24，直接提交 main）
 
   - [ ] 状态机、手动序章、写作计划 JSON、R2StorageDriver mock
   - [ ] `pnpm vitest run` 通过
@@ -289,7 +289,7 @@
   - [ ] `pnpm test:e2e` 通过
   - _需求：REQ-001~018 主路径与 UI/访问 P0_
 
-- [ ] **TASK-029. 构建与类型检查（DoD）**
+- [x] **TASK-029. 构建与类型检查（DoD）**（完成于 2026-05-24，直接提交 main）
 
   - [ ] `npx tsc --noEmit`、`pnpm lint`、`pnpm build`
   - _需求：REQ-018；AGENTS.md_
