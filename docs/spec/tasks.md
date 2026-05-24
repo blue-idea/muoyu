@@ -210,7 +210,7 @@
 
 ## 阶段 9：成书导出
 
-- [ ] **TASK-021. 四格式导出管道**
+- [x] **TASK-021. 四格式导出管道**（完成于 2026-05-24，PR #22 已合并）
 
   - [ ] `export-service.ts`：MD / TXT / PDF / EPUB
   - [ ] `export.createExport`、`export.listExports`
