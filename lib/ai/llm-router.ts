@@ -9,18 +9,13 @@ import { userLlmConfigs } from "@/drizzle/schema/llm";
 import { eq } from "drizzle-orm";
 import type { LLMClient } from "./types";
 import { OpenAICompatibleClient } from "./client";
+import { decryptApiKey } from "@/lib/llm/config-service";
 
 // ---------------------------------------------------------------------------
 // Platform Default Config
 // ---------------------------------------------------------------------------
 
-export interface PlatformLLMConfig {
-  baseUrl: string;
-  apiKey: string;
-  modelName: string;
-}
-
-function getPlatformConfig(): PlatformLLMConfig {
+function getPlatformConfig(): { baseUrl: string; apiKey: string; modelName: string } {
   const baseUrl = process.env.LLM_BASE_URL;
   const apiKey = process.env.LLM_API_KEY;
   const modelName = process.env.LLM_MODEL_NAME;
@@ -60,10 +55,23 @@ export async function getLLMClientForUser(
 
   // 2. 使用用户配置或平台默认
   if (userConfig) {
-    // TODO: AES 解密 encryptedApiKey
+    // 解密用户 API Key
+    let apiKey: string;
+    try {
+      apiKey = decryptApiKey(userConfig.encryptedApiKey);
+    } catch {
+      // 解密失败时降级到平台默认
+      const platformConfig = getPlatformConfig();
+      return new OpenAICompatibleClient({
+        baseUrl: platformConfig.baseUrl,
+        apiKey: platformConfig.apiKey,
+        modelName: platformConfig.modelName,
+      });
+    }
+
     return new OpenAICompatibleClient({
       baseUrl: userConfig.baseUrl,
-      apiKey: userConfig.encryptedApiKey,
+      apiKey,
       modelName: userConfig.modelName,
     });
   }
