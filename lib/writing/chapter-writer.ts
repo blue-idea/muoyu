@@ -246,7 +246,7 @@ async function buildChapterContext(
   previousChapterSummary?: string,
 ): Promise<ChapterContext> {
   let characterProfiles = "";
-  let worldSetting = "";
+  const worldSetting = "";
   let outline = "";
 
   try {
