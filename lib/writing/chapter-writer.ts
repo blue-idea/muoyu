@@ -15,6 +15,7 @@ import { generationJobs } from "@/drizzle/schema/jobs";
 import { eq } from "drizzle-orm";
 import { getLLMClientForUser } from "@/lib/ai/llm-router";
 import { knowledgeChunks, projectKnowledgeBindings } from "@/drizzle/schema/knowledge";
+import { getChapterRAGContext } from "@/lib/rag/rag-service";
 import type { LLMClient } from "@/lib/ai/types";
 
 // ---------------------------------------------------------------------------
@@ -54,6 +55,7 @@ export interface WriteChapterError {
 export interface OutlineRow {
   chapterNumber: number;
   title: string;
+  coreEvent?: string; // 核心事件（用于 RAG 检索关键词）
   scene: string;
   plot: string;
   characters: string;
@@ -160,9 +162,9 @@ export async function writeChapter(
   }
 
   // 获取知识库 RAG 片段
-  const ragContext = await getRAGContext(db, projectId, chapterNumber);
-  if (ragContext) {
-    context.ragContext = ragContext;
+  const ragResult = await getChapterRAGContext(projectId, chapterNumber, outline.title, outline.coreEvent);
+  if (ragResult) {
+    context.ragContext = ragResult.context;
   }
 
   // 构建创作 prompt
